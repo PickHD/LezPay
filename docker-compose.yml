@@ -1,0 +1,63 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:14.1-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5432:5432'
+    networks:
+      - lezpay-dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  redis:
+    image: redis
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    networks:
+      - lezpay-dev
+    volumes:
+      - redis_data:/data
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - '16686:16686'
+      - '14268:14268'
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=debug
+    networks:
+      - lezpay-dev
+  auth-service-http:
+    container_name: auth-service-http
+    build:
+      context: .
+      dockerfile: ./auth/build/http/Dockerfile
+    ports:
+      - '8080:8080'
+    command: auth-service http
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+    links:
+      - postgres
+      - jaeger
+      - redis
+networks:
+  lezpay-dev:
+    driver: bridge
+volumes:
+    postgres_data:
+      driver: local
+    redis_data:
