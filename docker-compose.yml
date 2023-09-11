@@ -6,8 +6,9 @@ services:
     container_name: postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=lezpaydev
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=lezpay
     ports:
       - '5432:5432'
     networks:
@@ -29,10 +30,76 @@ services:
     container_name: jaeger
     ports:
       - '16686:16686'
-      - '14268:14268'
+      - '4318:4318'
     environment:
       - COLLECTOR_OTLP_ENABLED=true
       - LOG_LEVEL=debug
+      - COLLECTOR_ZIPKIN_HOST_PORT=9411
+    networks:
+      - lezpay-dev
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - lezpay-dev
+  first-broker:
+    image: confluentinc/cp-kafka:latest
+    container_name: first-broker
+    ports:
+      - "9091:9091"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://first-broker:9091,PLAINTEXT_HOST://localhost:29091
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - lezpay-dev
+  second-broker:
+    image: confluentinc/cp-kafka:latest
+    container_name: second-broker
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://second-broker:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - lezpay-dev
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
+    depends_on:
+      - first-broker
+      - second-broker
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=lezpaylocal
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=first-broker:9091
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+      - KAFKA_CLUSTERS_1_NAME=lezpaysecondlocal
+      - KAFKA_CLUSTERS_1_BOOTSTRAPSERVERS=second-broker:9092
+      - KAFKA_CLUSTERS_1_ZOOKEEPER=zookeeper:2181
     networks:
       - lezpay-dev
   auth-service-http:
@@ -41,7 +108,7 @@ services:
       context: .
       dockerfile: ./auth/build/http/Dockerfile
     ports:
-      - '8080:8080'
+      - '8084:8084'
     command: auth-service http
     networks:
       - lezpay-dev
@@ -54,6 +121,207 @@ services:
       - postgres
       - jaeger
       - redis
+  customer-service-http:
+    container_name: customer-service-http
+    build:
+      context: .
+      dockerfile: ./customer/build/http/Dockerfile
+    ports:
+      - '8081:8081'
+    command: customer-service http
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+  customer-service-grpc:
+    container_name: customer-service-grpc
+    build:
+      context: .
+      dockerfile: ./customer/build/grpc/Dockerfile
+    ports:
+      - '8091:8091'
+    command: customer-service grpc
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+  customer-service-consumer:
+    container_name: customer-service-consumer
+    build:
+      context: .
+      dockerfile: ./customer/build/consumer/Dockerfile
+    command: customer-service consumer
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+  merchant-service-http:
+    container_name: merchant-service-http
+    build:
+      context: .
+      dockerfile: ./merchant/build/http/Dockerfile
+    ports:
+      - '8082:8082'
+    command: merchant-service http
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+  merchant-service-grpc:
+    container_name: merchant-service-grpc
+    build:
+      context: .
+      dockerfile: ./merchant/build/grpc/Dockerfile
+    ports:
+      - '8092:8092'
+    command: merchant-service grpc
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+  merchant-service-consumer:
+    container_name: merchant-service-consumer
+    build:
+      context: .
+      dockerfile: ./merchant/build/consumer/Dockerfile
+    command: merchant-service consumer
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+  wallet-service-http:
+    container_name: wallet-service-http
+    build:
+      context: .
+      dockerfile: ./wallet/build/http/Dockerfile
+    ports:
+      - '8083:8083'
+    command: wallet-service http
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+  wallet-service-grpc:
+    container_name: wallet-service-grpc
+    build:
+      context: .
+      dockerfile: ./wallet/build/grpc/Dockerfile
+    ports:
+      - '8093:8093'
+    command: wallet-service grpc
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+  wallet-service-consumer:
+    container_name: wallet-service-consumer
+    build:
+      context: .
+      dockerfile: ./wallet/build/consumer/Dockerfile
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+
 networks:
   lezpay-dev:
     driver: bridge
