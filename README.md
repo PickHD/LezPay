@@ -2,13 +2,14 @@
 E-Wallet using golang.
 
 ## Architect Overview :
+![ARCH](https://raw.github.com/PickHD/LezPay/main/lezpay_arch.png)
 
 ## Main Features : 
-1. Register & Login, Reset Password Customer & Merchant _Coming Soon_
-2. Topup Wallet Customer (Only Support VA Bank For Now) _Coming Soon_
-3. Payout Wallet Customer (Supported Merchant Only) _Coming Soon_
-3. Dashboard Customer (Show Current Balances, Show List History Topup/Payout) _Coming Soon_
-4. Dashboard Merchant (Show Total Transactions, Show List History Transaction) _Coming Soon_
+1. **Register & Login, Reset Password Customer & Merchant** _Coming Soon_
+2. **Topup Wallet Customer** (Only Support VA Bank For Now) _Coming Soon_
+3. **Payout Wallet Customer** (Supported Merchant Only) _Coming Soon_
+3. **Dashboard Customer** (Show Current Balances, Show List History Topup/Payout) _Coming Soon_
+4. **Dashboard Merchant** (Show Total Transactions, Show List History Transaction) _Coming Soon_
 
 ## Tech Used :
 1. Golang
