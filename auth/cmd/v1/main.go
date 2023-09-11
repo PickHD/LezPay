@@ -25,7 +25,7 @@ const (
 // @contact.name    Taufik Januar
 // @contact.email   taufikjanuar35@gmail.com
 // @license.name    MIT
-// @host            localhost:8080
+// @host            localhost:8084
 // @BasePath        /v1
 // @Schemes         http
 func main() {

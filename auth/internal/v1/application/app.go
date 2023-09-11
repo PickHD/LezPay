@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	trace "go.opentelemetry.io/otel/sdk/trace"
@@ -108,12 +109,13 @@ func (a *App) Close(ctx context.Context) {
 }
 
 // initJaegerTracerProvider returns an OpenTelemetry TracerProvider configured to use
-// the Jaeger exporter that will send spans to the provided url. The returned
+// the OTLP Jaeger exporter that will send spans to the provided url. The returned
 // TracerProvider will also use a Resource configured with all the information
 // about the application.
 func initJaegerTracerProvider(cfg *config.Configuration) (*trace.TracerProvider, error) {
-	// Create the Jaeger exporter
-	exp, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpoint(cfg.Tracer.JaegerURL))
+	// Create the HTTP Client exporter with endpoint refer to jaeger URL
+	client := otlptracehttp.NewClient(otlptracehttp.WithEndpoint(cfg.Tracer.JaegerURL), otlptracehttp.WithInsecure())
+	exp, err := otlptrace.New(context.Background(), client)
 	if err != nil {
 		return nil, err
 	}
