@@ -4,6 +4,8 @@ import (
 	"github.com/PickHD/LezPay/merchant/internal/v1/application"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	merchantpb "github.com/PickHD/LezPay/merchant/pkg/proto/v1/merchant"
 )
 
 func ServeGRPC(app *application.App) *grpc.Server {
@@ -12,9 +14,11 @@ func ServeGRPC(app *application.App) *grpc.Server {
 }
 
 func register(app *application.App) *grpc.Server {
-	// var dep = application.SetupDependencyInjection(app)
+	var dep = application.SetupDependencyInjection(app)
 
 	reflection.Register(app.GRPC)
+
+	merchantpb.RegisterMerchantServiceServer(app.GRPC, dep.MerchantController)
 
 	return app.GRPC
 }
