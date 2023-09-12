@@ -1,0 +1,17 @@
+syntax= "proto3";
+
+package proto.v1.wallet;
+
+option go_package = "./";
+
+service WalletService {
+    rpc CreateWallet (WalletRequest) returns (WalletResponse);
+}
+
+message WalletRequest {
+    uint64 customer_id = 1;
+}
+
+message WalletResponse {
+    uint64 id = 1;
+}

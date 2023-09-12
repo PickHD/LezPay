@@ -25,6 +25,10 @@ func setupRouter(app *application.App) {
 		v1.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 		v1.GET("/health-check", dep.HealthCheckController.Check)
+
+		v1.POST("/register", dep.AuthController.Register)
+
+		v1.GET("/register/verify", dep.AuthController.VerifyRegister)
 	}
 
 }

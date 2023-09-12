@@ -102,6 +102,25 @@ services:
       - KAFKA_CLUSTERS_1_ZOOKEEPER=zookeeper:2181
     networks:
       - lezpay-dev
+  migrate:
+    image: migrate/migrate
+    container_name: migrate
+    volumes:
+      - ./db/migrations/:/migrations
+    command:
+      [
+        '-path',
+        '/migrations',
+        '-database',
+        'postgres://lezpaydev:root@postgres:5432/lezpay?sslmode=disable',
+        'up'
+      ]
+    depends_on:
+      - postgres
+    links:
+      - postgres
+    networks:
+      - lezpay-dev
   auth-service-http:
     container_name: auth-service-http
     build:

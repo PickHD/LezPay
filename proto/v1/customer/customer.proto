@@ -1,0 +1,40 @@
+syntax= "proto3";
+
+package proto.v1.customer;
+
+option go_package = "./";
+
+service CustomerService {
+    rpc CreateCustomer (CustomerRequest) returns (CustomerResponse);
+    rpc UpdateVerifiedCustomer (UpdateVerifiedCustomerRequest) returns (UpdateVerifiedCustomerResponse);
+    rpc GetCustomerIDByEmail (GetCustomerIDByEmailRequest) returns (GetCustomerIDByEmailResponse);
+}
+
+message CustomerRequest {
+    string full_name = 1;
+    string email = 2;
+    string phone_number = 3;
+    string password = 4;
+    string pin = 5;
+}
+
+message CustomerResponse {
+    uint64 id = 1;
+    bool is_verified = 2;
+}
+
+message UpdateVerifiedCustomerRequest {
+    string email = 1;
+}
+
+message UpdateVerifiedCustomerResponse {
+    bool is_verified = 1;
+}
+
+message GetCustomerIDByEmailRequest {
+    string email = 1;
+}
+
+message GetCustomerIDByEmailResponse {
+    uint64 customer_id = 1;
+}

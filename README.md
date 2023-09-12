@@ -26,12 +26,7 @@ E-Wallet using golang.
 3. Make sure to uncheck comment & fill your **SMTP configuration** on auth env
 
 ## Setup :
-1. To build all services, run command : 
-    ```
-    make build
-    ```
-
-2. You can build & run all services in background using command : 
+1. To build & run all services in background using command : 
     ``` 
     make run
     ```

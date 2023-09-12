@@ -3,6 +3,7 @@ module github.com/PickHD/LezPay/wallet
 go 1.20
 
 require (
+	github.com/bwmarrin/snowflake v0.3.0
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.11.1
@@ -50,7 +51,7 @@ require (
 	golang.org/x/tools v0.7.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230711160842-782d3b101e98 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 

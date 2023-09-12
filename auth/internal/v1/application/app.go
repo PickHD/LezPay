@@ -19,19 +19,24 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	trace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/gomail.v2"
 )
 
 // App ..
 type App struct {
-	Application *gin.Engine
-	Context     context.Context
-	Config      *config.Configuration
-	Logger      *logrus.Logger
-	DB          *pgxpool.Pool
-	Redis       *redis.Client
-	Tracer      *trace.TracerProvider
-	Mailer      *gomail.Dialer
+	Application  *gin.Engine
+	Context      context.Context
+	Config       *config.Configuration
+	Logger       *logrus.Logger
+	DB           *pgxpool.Pool
+	Redis        *redis.Client
+	Tracer       *trace.TracerProvider
+	Mailer       *gomail.Dialer
+	CustomerGRPC *grpc.ClientConn
+	MerchantGRPC *grpc.ClientConn
+	WalletGRPC   *grpc.ClientConn
 }
 
 // SetupApplication configuring dependencies app needed
@@ -78,6 +83,28 @@ func SetupApplication(ctx context.Context) (*App, error) {
 		DB:       0,  // use default DB
 	})
 	app.Redis = redisClient
+
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	app.CustomerGRPC, err = grpc.Dial(app.Config.Service.GRPCCustomerHost, opts...)
+	if err != nil {
+		app.Logger.Error("failed Dial CustomerGRPC, error :", err)
+		return app, err
+	}
+
+	app.MerchantGRPC, err = grpc.Dial(app.Config.Service.GRPCMerchantHost, opts...)
+	if err != nil {
+		app.Logger.Error("failed Dial MerchantGRPC, error :", err)
+		return app, err
+	}
+
+	app.WalletGRPC, err = grpc.Dial(app.Config.Service.GRPCWalletHost, opts...)
+	if err != nil {
+		app.Logger.Error("failed Dial WalletGRPC, error :", err)
+		return app, err
+	}
 
 	app.Application = gin.New()
 	app.Application.Use(middleware.CORSMiddleware())

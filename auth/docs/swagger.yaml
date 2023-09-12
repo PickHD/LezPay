@@ -18,6 +18,29 @@ definitions:
       total_page:
         type: integer
     type: object
+  model.RegisterRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        type: string
+      phone_number:
+        type: string
+      pin:
+        type: string
+      user_type:
+        $ref: '#/definitions/model.UserType'
+    type: object
+  model.UserType:
+    enum:
+    - customer
+    - merchant
+    type: string
+    x-enum-varnames:
+    - Customer
+    - Merchant
 host: localhost:8084
 info:
   contact:
@@ -47,6 +70,72 @@ paths:
       summary: Checking Health Services
       tags:
       - Health Check
+  /register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: register user
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+      summary: Register users
+      tags:
+      - Auth
+  /register/verify:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Code Verification
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: customer|merchant
+        in: query
+        name: user_type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+      summary: Verify Register Users
+      tags:
+      - Auth
 schemes:
 - http
 swagger: "2.0"
