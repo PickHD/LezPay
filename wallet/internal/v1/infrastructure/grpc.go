@@ -4,6 +4,8 @@ import (
 	"github.com/PickHD/LezPay/wallet/internal/v1/application"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	walletpb "github.com/PickHD/LezPay/wallet/pkg/proto/v1/wallet"
 )
 
 func ServeGRPC(app *application.App) *grpc.Server {
@@ -12,9 +14,11 @@ func ServeGRPC(app *application.App) *grpc.Server {
 }
 
 func register(app *application.App) *grpc.Server {
-	// var dep = application.SetupDependencyInjection(app)
+	var dep = application.SetupDependencyInjection(app)
 
 	reflection.Register(app.GRPC)
+
+	walletpb.RegisterWalletServiceServer(app.GRPC, dep.WalletController)
 
 	return app.GRPC
 }
