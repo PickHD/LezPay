@@ -1,0 +1,31 @@
+syntax= "proto3";
+
+package proto.v1.merchant;
+
+option go_package = "./";
+
+service MerchantService {
+    rpc CreateMerchant (MerchantRequest) returns (MerchantResponse);
+    rpc UpdateVerifiedMerchant (UpdateVerifiedMerchantRequest) returns (UpdateVerifiedMerchantResponse);
+}
+
+message MerchantRequest {
+    string full_name = 2;
+    string email = 3;
+    string phone_number = 4;
+    string password = 5;
+    bool is_verified = 6;
+}
+
+message MerchantResponse {
+    uint64 id = 1;
+    bool is_verified = 2;
+}
+
+message UpdateVerifiedMerchantRequest {
+    string email = 1;
+}
+
+message UpdateVerifiedMerchantResponse {
+    bool is_verified = 1;
+}
