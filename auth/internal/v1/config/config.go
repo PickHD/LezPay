@@ -11,6 +11,7 @@ type (
 		Secret   *Secret
 		Tracer   *Tracer
 		Mailer   *Mailer
+		Service  *Service
 	}
 
 	Common struct {
@@ -55,6 +56,12 @@ type (
 		IsTLS    bool
 		SSL      int
 	}
+
+	Service struct {
+		GRPCCustomerHost string
+		GRPCMerchantHost string
+		GRPCWalletHost   string
+	}
 )
 
 func loadConfiguration() *Configuration {
@@ -94,6 +101,11 @@ func loadConfiguration() *Configuration {
 			Sender:   helper.GetEnvString("SMTP_SENDER"),
 			SSL:      helper.GetEnvInt("SMTP_SSL"),
 			IsTLS:    helper.GetEnvBool("SMTP_IS_TLS"),
+		},
+		Service: &Service{
+			GRPCCustomerHost: helper.GetEnvString("GRPC_CUSTOMER_HOST"),
+			GRPCMerchantHost: helper.GetEnvString("GRPC_MERCHANT_HOST"),
+			GRPCWalletHost:   helper.GetEnvString("GRPC_WALLET_HOST"),
 		},
 	}
 }
