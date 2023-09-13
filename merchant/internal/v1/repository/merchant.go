@@ -18,6 +18,7 @@ type (
 	MerchantRepository interface {
 		CreateMerchant(req *model.CreateMerchantRequest) (int64, bool, error)
 		UpdateVerifiedMerchant(email string) (bool, error)
+		GetMerchantDetailsByEmail(req *model.GetMerchantDetailsByEmailRequest) (*model.GetMerchantDetailsByEmailResponse, error)
 	}
 
 	// MerchantRepositoryImpl is an app merchant struct that consists of all the dependencies needed for merchant repository
@@ -61,7 +62,7 @@ func (mr *MerchantRepositoryImpl) CreateMerchant(req *model.CreateMerchantReques
 		SELECT 
 			email
 		FROM
-			customer
+			Merchant
 		WHERE
 			email = $1
 	`
@@ -81,11 +82,11 @@ func (mr *MerchantRepositoryImpl) CreateMerchant(req *model.CreateMerchantReques
 			id, err := helper.GenerateSnowflakeID()
 			if err != nil {
 				// do rollback tx
-				err := tx.Rollback(mr.Context)
-				if err != nil {
-					mr.Logger.Error("MerchantRepositoryImpl.CreateMerchant tx.Rollback ERROR", err)
+				errRollback := tx.Rollback(mr.Context)
+				if errRollback != nil {
+					mr.Logger.Error("MerchantRepositoryImpl.CreateMerchant tx.Rollback ERROR", errRollback)
 
-					return 0, false, err
+					return 0, false, errRollback
 				}
 
 				mr.Logger.Error("MerchantRepositoryImpl.CreateMerchant GenerateSnowflakeID ERROR", err)
@@ -93,14 +94,14 @@ func (mr *MerchantRepositoryImpl) CreateMerchant(req *model.CreateMerchantReques
 				return 0, false, err
 			}
 
-			_, errCreate := tx.Exec(mr.Context, sql, id, req.FullName, req.Email, req.PhoneNumber, req.Password, false)
-			if errCreate != nil {
+			_, err = tx.Exec(mr.Context, sql, id, req.FullName, req.Email, req.PhoneNumber, req.Password, false)
+			if err != nil {
 				// do rollback tx
-				err := tx.Rollback(mr.Context)
-				if err != nil {
-					mr.Logger.Error("MerchantRepositoryImpl.CreateMerchant tx.Rollback ERROR", err)
+				errRollback := tx.Rollback(mr.Context)
+				if errRollback != nil {
+					mr.Logger.Error("MerchantRepositoryImpl.CreateMerchant tx.Rollback ERROR", errRollback)
 
-					return 0, false, err
+					return 0, false, errRollback
 				}
 
 				mr.Logger.Error("MerchantRepositoryImpl.CreateMerchant tx.Exec ERROR", err)
@@ -120,11 +121,11 @@ func (mr *MerchantRepositoryImpl) CreateMerchant(req *model.CreateMerchantReques
 		}
 
 		// do rollback tx
-		err := tx.Rollback(mr.Context)
-		if err != nil {
-			mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Rollback ERROR", err)
+		errRollback := tx.Rollback(mr.Context)
+		if errRollback != nil {
+			mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Rollback ERROR", errRollback)
 
-			return 0, false, err
+			return 0, false, errRollback
 		}
 
 		mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant row.Scan ERROR", err)
@@ -172,22 +173,22 @@ func (mr *MerchantRepositoryImpl) UpdateVerifiedMerchant(email string) (bool, er
 		// if data not found
 		if err.Error() == pgx.ErrNoRows.Error() {
 			// do rollback tx
-			err := tx.Rollback(mr.Context)
-			if err != nil {
-				mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Rollback ERROR", err)
+			errRollback := tx.Rollback(mr.Context)
+			if errRollback != nil {
+				mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Rollback ERROR", errRollback)
 
-				return false, err
+				return false, errRollback
 			}
 
 			return false, err
 		}
 
 		// do rollback tx
-		err := tx.Rollback(mr.Context)
-		if err != nil {
-			mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Rollback ERROR", err)
+		errRollback := tx.Rollback(mr.Context)
+		if errRollback != nil {
+			mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Rollback ERROR", errRollback)
 
-			return false, err
+			return false, errRollback
 		}
 
 		mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant row.Scan ERROR", err)
@@ -204,14 +205,14 @@ func (mr *MerchantRepositoryImpl) UpdateVerifiedMerchant(email string) (bool, er
 			email = $2
 	`
 
-	_, errUpdate := tx.Exec(mr.Context, sqlUpdate, true, email)
-	if errUpdate != nil {
+	_, err = tx.Exec(mr.Context, sqlUpdate, true, email)
+	if err != nil {
 		// do rollback tx
-		err := tx.Rollback(mr.Context)
-		if err != nil {
-			mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Rollback ERROR", err)
+		errRollback := tx.Rollback(mr.Context)
+		if errRollback != nil {
+			mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Rollback ERROR", errRollback)
 
-			return false, err
+			return false, errRollback
 		}
 
 		mr.Logger.Error("MerchantRepositoryImpl.UpdateVerifiedMerchant tx.Exec ERROR", err)
@@ -228,4 +229,45 @@ func (mr *MerchantRepositoryImpl) UpdateVerifiedMerchant(email string) (bool, er
 	}
 
 	return true, nil
+}
+
+func (mr *MerchantRepositoryImpl) GetMerchantDetailsByEmail(req *model.GetMerchantDetailsByEmailRequest) (*model.GetMerchantDetailsByEmailResponse, error) {
+	tr := mr.Tracer.Tracer("Merchant-GetMerchantDetailsByEmail Repository")
+	_, span := tr.Start(mr.Context, "Start GetMerchantDetailsByEmail")
+	defer span.End()
+
+	data := &model.GetMerchantDetailsByEmailResponse{}
+
+	sql := `
+		SELECT
+			id,
+			full_name,
+			email,
+			phone_number,
+			password
+		FROM 
+			merchant
+		WHERE
+			email = $1
+		AND
+			is_verified = true
+	`
+
+	row := mr.DB.QueryRow(mr.Context, sql, req.Email)
+
+	err := row.Scan(&data.ID, &data.FullName, &data.Email, &data.PhoneNumber, &data.Password)
+	if err != nil {
+		// if data not found
+		if err.Error() == pgx.ErrNoRows.Error() {
+			mr.Logger.Info("MerchantRepositoryImpl.GetMerchantDetailsByEmail email not found ", err)
+
+			return nil, model.NewError(model.NotFound, "email not found")
+		}
+
+		mr.Logger.Error("MerchantRepositoryImpl.GetMerchantDetailsByEmail row.Scan ERROR ", err)
+
+		return nil, err
+	}
+
+	return data, nil
 }

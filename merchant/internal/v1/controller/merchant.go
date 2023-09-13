@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 
 	"github.com/PickHD/LezPay/merchant/internal/v1/config"
 	"github.com/PickHD/LezPay/merchant/internal/v1/model"
@@ -18,6 +19,7 @@ type (
 	MerchantController interface {
 		CreateMerchant(ctx context.Context, req *merchantpb.MerchantRequest) (*merchantpb.MerchantResponse, error)
 		UpdateVerifiedMerchant(ctx context.Context, req *merchantpb.UpdateVerifiedMerchantRequest) (*merchantpb.UpdateVerifiedMerchantResponse, error)
+		GetMerchantDetailsByEmail(ctx context.Context, req *merchantpb.GetMerchantDetailsByEmailRequest) (*merchantpb.GetMerchantDetailsByEmailResponse, error)
 	}
 
 	// MerchantControllerImpl is an app Merchant struct that consists of all the dependencies needed for Merchant controller
@@ -75,5 +77,32 @@ func (mc *MerchantControllerImpl) UpdateVerifiedMerchant(ctx context.Context, re
 
 	return &merchantpb.UpdateVerifiedMerchantResponse{
 		IsVerified: data.IsVerified,
+	}, nil
+}
+
+func (mc *MerchantControllerImpl) GetMerchantDetailsByEmail(ctx context.Context, req *merchantpb.GetMerchantDetailsByEmailRequest) (*merchantpb.GetMerchantDetailsByEmailResponse, error) {
+	tr := mc.Tracer.Tracer("Customer-GetMerchantDetailsByEmail Controller")
+	_, span := tr.Start(ctx, "Start GetMerchantDetailsByEmail")
+	defer span.End()
+
+	getMerchant := &model.GetMerchantDetailsByEmailRequest{
+		Email: req.GetEmail(),
+	}
+
+	data, err := mc.MerchantSvc.GetMerchantDetailsByEmail(getMerchant)
+	if err != nil {
+		if strings.Contains(err.Error(), string(model.NotFound)) {
+			return nil, status.Error(codes.NotFound, "Email Not Found")
+		}
+
+		return nil, status.Errorf(codes.Internal, "Failed Get Merchant Details By Email %s", err.Error())
+	}
+
+	return &merchantpb.GetMerchantDetailsByEmailResponse{
+		Id:          uint64(data.ID),
+		FullName:    data.FullName,
+		Email:       data.Email,
+		PhoneNumber: data.PhoneNumber,
+		Password:    data.Password,
 	}, nil
 }

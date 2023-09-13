@@ -14,6 +14,7 @@ type (
 	MerchantService interface {
 		CreateMerchant(req *model.CreateMerchantRequest) (*model.CreateMerchantResponse, error)
 		UpdateVerifiedMerchant(email string) (*model.UpdateVerifiedMerchantResponse, error)
+		GetMerchantDetailsByEmail(req *model.GetMerchantDetailsByEmailRequest) (*model.GetMerchantDetailsByEmailResponse, error)
 	}
 
 	// MerchantServiceImpl is an app Merchant struct that consists of all the dependencies needed for merchant service
@@ -63,5 +64,24 @@ func (ms *MerchantServiceImpl) UpdateVerifiedMerchant(email string) (*model.Upda
 
 	return &model.UpdateVerifiedMerchantResponse{
 		IsVerified: isVerified,
+	}, nil
+}
+
+func (ms *MerchantServiceImpl) GetMerchantDetailsByEmail(req *model.GetMerchantDetailsByEmailRequest) (*model.GetMerchantDetailsByEmailResponse, error) {
+	tr := ms.Tracer.Tracer("Merchant-GetMerchantDetailsByEmail Service")
+	_, span := tr.Start(ms.Context, "Start GetMerchantDetailsByEmail")
+	defer span.End()
+
+	getMerchant, err := ms.MerchantRepo.GetMerchantDetailsByEmail(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.GetMerchantDetailsByEmailResponse{
+		ID:          getMerchant.ID,
+		FullName:    getMerchant.FullName,
+		PhoneNumber: getMerchant.PhoneNumber,
+		Email:       getMerchant.Email,
+		Password:    getMerchant.Password,
 	}, nil
 }
