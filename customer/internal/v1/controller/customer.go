@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"strings"
 
 	"github.com/PickHD/LezPay/customer/internal/v1/config"
 	"github.com/PickHD/LezPay/customer/internal/v1/model"
@@ -19,6 +20,7 @@ type (
 		CreateCustomer(ctx context.Context, req *customerpb.CustomerRequest) (*customerpb.CustomerResponse, error)
 		UpdateVerifiedCustomer(ctx context.Context, req *customerpb.UpdateVerifiedCustomerRequest) (*customerpb.UpdateVerifiedCustomerResponse, error)
 		GetCustomerIDByEmail(ctx context.Context, req *customerpb.GetCustomerIDByEmailRequest) (*customerpb.GetCustomerIDByEmailResponse, error)
+		GetCustomerDetailsByEmail(ctx context.Context, req *customerpb.GetCustomerDetailsByEmailRequest) (*customerpb.GetCustomerDetailsByEmailResponse, error)
 	}
 
 	// CustomerControllerImpl is an app customer struct that consists of all the dependencies needed for customer controller
@@ -96,5 +98,33 @@ func (cc *CustomerControllerImpl) GetCustomerIDByEmail(ctx context.Context, req 
 
 	return &customerpb.GetCustomerIDByEmailResponse{
 		CustomerId: uint64(data.CustomerID),
+	}, nil
+}
+
+func (cc *CustomerControllerImpl) GetCustomerDetailsByEmail(ctx context.Context, req *customerpb.GetCustomerDetailsByEmailRequest) (*customerpb.GetCustomerDetailsByEmailResponse, error) {
+	tr := cc.Tracer.Tracer("Customer-GetCustomerDetailsByEmail Controller")
+	_, span := tr.Start(ctx, "Start GetCustomerDetailsByEmail")
+	defer span.End()
+
+	getCustomer := &model.GetCustomerDetailsByEmailRequest{
+		Email: req.GetEmail(),
+	}
+
+	data, err := cc.CustomerSvc.GetCustomerDetailsByEmail(getCustomer)
+	if err != nil {
+		if strings.Contains(err.Error(), string(model.NotFound)) {
+			return nil, status.Error(codes.NotFound, "Email Not Found")
+		}
+
+		return nil, status.Errorf(codes.Internal, "Failed Get Customer Details By Email %s", err.Error())
+	}
+
+	return &customerpb.GetCustomerDetailsByEmailResponse{
+		Id:          uint64(data.ID),
+		FullName:    data.FullName,
+		Email:       data.Email,
+		PhoneNumber: data.PhoneNumber,
+		Password:    data.Password,
+		Pin:         data.Pin,
 	}, nil
 }

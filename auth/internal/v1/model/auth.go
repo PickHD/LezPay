@@ -1,6 +1,9 @@
 package model
 
-import "regexp"
+import (
+	"regexp"
+	"time"
+)
 
 type (
 	// UserType determinate users is customer or merchant
@@ -22,6 +25,19 @@ type (
 	// VerifyCodeResponse consist response of verify code
 	VerifyCodeResponse struct {
 		IsVerified bool `json:"is_verified"`
+	}
+
+	// LoginRequest consist request of login customer/merchant
+	LoginRequest struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	// LoginResponse consist response of login customer/merchant
+	LoginResponse struct {
+		AccessToken string    `json:"access_token"`
+		ExpiredAt   time.Time `json:"expired_at"`
+		Type        string    `json:"type"`
 	}
 )
 

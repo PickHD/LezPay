@@ -30,4 +30,18 @@ type (
 	GetCustomerIDByEmailResponse struct {
 		CustomerID int64
 	}
+
+	// GetCustomerDetailsByEmailRequest consist request getting customer details by email
+	GetCustomerDetailsByEmailRequest struct {
+		Email string
+	}
+
+	GetCustomerDetailsByEmailResponse struct {
+		ID          int64
+		FullName    string
+		Email       string
+		PhoneNumber string
+		Password    string
+		Pin         string
+	}
 )

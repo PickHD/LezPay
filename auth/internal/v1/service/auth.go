@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/PickHD/LezPay/auth/internal/v1/config"
 	"github.com/PickHD/LezPay/auth/internal/v1/helper"
 	"github.com/PickHD/LezPay/auth/internal/v1/model"
 	"github.com/PickHD/LezPay/auth/internal/v1/repository"
+	"github.com/golang-jwt/jwt"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -21,6 +23,7 @@ type (
 	AuthService interface {
 		RegisterCustomerOrMerchant(req *model.RegisterRequest) error
 		VerifyRegisterCode(ctx context.Context, code string, userType model.UserType, verifyType model.VerificationType) (*model.VerifyCodeResponse, error)
+		LoginCustomerOrMerchant(ctx context.Context, req *model.LoginRequest) (*model.LoginResponse, error)
 	}
 
 	// AuthServiceImpl is an app auth struct that consists of all the dependencies needed for auth service
@@ -159,6 +162,62 @@ func (as *AuthServiceImpl) VerifyRegisterCode(ctx context.Context, code string, 
 	}, nil
 }
 
+func (as *AuthServiceImpl) LoginCustomerOrMerchant(ctx context.Context, req *model.LoginRequest) (*model.LoginResponse, error) {
+	tr := as.Tracer.Tracer("Auth-LoginCustomerOrMerchant service")
+	_, span := tr.Start(ctx, "Start LoginCustomerOrMerchant")
+	defer span.End()
+
+	err := as.validateLoginRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	dataCustomer, err := as.CustomerClients.GetCustomerDetailsByEmail(ctx, &customerpb.GetCustomerDetailsByEmailRequest{Email: req.Email})
+	if err != nil {
+		// if not found, check to merchant client
+		if err.Error() == "Email Not Found" {
+			dataMerchant, err := as.MerchantClients.GetMerchantDetailsByEmail(ctx, &merchantpb.GetMerchantDetailsByEmailRequest{Email: req.Email})
+			if err != nil {
+				return nil, err
+			}
+
+			if !helper.CheckPasswordHash(dataMerchant.GetPassword(), req.Password) {
+				return nil, model.NewError(model.Validation, "password invalid")
+			}
+
+			// generate access token jwt
+			accessToken, expiredAt, err := as.generateJWT(dataMerchant.GetId(), req.Email)
+			if err != nil {
+				return nil, err
+			}
+
+			return &model.LoginResponse{
+				AccessToken: accessToken,
+				Type:        "Bearer",
+				ExpiredAt:   time.Now().Add(expiredAt),
+			}, nil
+		}
+
+		return nil, err
+	}
+
+	if !helper.CheckPasswordHash(dataCustomer.GetPassword(), req.Password) {
+		return nil, model.NewError(model.Validation, "password invalid")
+	}
+
+	// generate access token jwt
+	accessToken, expiredAt, err := as.generateJWT(dataCustomer.GetId(), req.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.LoginResponse{
+		AccessToken: accessToken,
+		Type:        "Bearer",
+		ExpiredAt:   time.Now().Add(expiredAt),
+	}, nil
+}
+
 func (as *AuthServiceImpl) validateRegisterRequest(req *model.RegisterRequest) error {
 	if req.UserType != model.Customer && req.UserType != model.Merchant {
 		return model.NewError(model.Validation, "user_type must customer or merchant")
@@ -189,4 +248,35 @@ func (as *AuthServiceImpl) validateRegisterRequest(req *model.RegisterRequest) e
 	}
 
 	return nil
+}
+
+func (as *AuthServiceImpl) validateLoginRequest(req *model.LoginRequest) error {
+	if !model.IsValidEmail.MatchString(req.Email) {
+		return model.NewError(model.Validation, "invalid email")
+	}
+
+	return nil
+}
+
+func (as *AuthServiceImpl) generateJWT(userID uint64, email string) (string, time.Duration, error) {
+	var (
+		payloadUserID  = "user_id"
+		payloadEmail   = "email"
+		payloadExpires = "exp"
+		JWTExpire      = time.Duration(as.Config.Common.JWTExpire) * time.Hour
+	)
+
+	claims := jwt.MapClaims{}
+	claims[payloadUserID] = userID
+	claims[payloadEmail] = email
+	claims[payloadExpires] = time.Now().Add(JWTExpire).Unix()
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	signedToken, err := token.SignedString([]byte(as.Config.Secret.JWTSecret))
+	if err != nil {
+		return "", 0, err
+	}
+
+	return signedToken, JWTExpire, nil
 }
