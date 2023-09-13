@@ -25,6 +25,7 @@ type CustomerServiceClient interface {
 	CreateCustomer(ctx context.Context, in *CustomerRequest, opts ...grpc.CallOption) (*CustomerResponse, error)
 	UpdateVerifiedCustomer(ctx context.Context, in *UpdateVerifiedCustomerRequest, opts ...grpc.CallOption) (*UpdateVerifiedCustomerResponse, error)
 	GetCustomerIDByEmail(ctx context.Context, in *GetCustomerIDByEmailRequest, opts ...grpc.CallOption) (*GetCustomerIDByEmailResponse, error)
+	GetCustomerDetailsByEmail(ctx context.Context, in *GetCustomerDetailsByEmailRequest, opts ...grpc.CallOption) (*GetCustomerDetailsByEmailResponse, error)
 }
 
 type customerServiceClient struct {
@@ -62,6 +63,15 @@ func (c *customerServiceClient) GetCustomerIDByEmail(ctx context.Context, in *Ge
 	return out, nil
 }
 
+func (c *customerServiceClient) GetCustomerDetailsByEmail(ctx context.Context, in *GetCustomerDetailsByEmailRequest, opts ...grpc.CallOption) (*GetCustomerDetailsByEmailResponse, error) {
+	out := new(GetCustomerDetailsByEmailResponse)
+	err := c.cc.Invoke(ctx, "/proto.v1.customer.CustomerService/GetCustomerDetailsByEmail", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CustomerServiceServer is the server API for CustomerService service.
 // All implementations must embed UnimplementedCustomerServiceServer
 // for forward compatibility
@@ -69,6 +79,7 @@ type CustomerServiceServer interface {
 	CreateCustomer(context.Context, *CustomerRequest) (*CustomerResponse, error)
 	UpdateVerifiedCustomer(context.Context, *UpdateVerifiedCustomerRequest) (*UpdateVerifiedCustomerResponse, error)
 	GetCustomerIDByEmail(context.Context, *GetCustomerIDByEmailRequest) (*GetCustomerIDByEmailResponse, error)
+	GetCustomerDetailsByEmail(context.Context, *GetCustomerDetailsByEmailRequest) (*GetCustomerDetailsByEmailResponse, error)
 	mustEmbedUnimplementedCustomerServiceServer()
 }
 
@@ -84,6 +95,9 @@ func (UnimplementedCustomerServiceServer) UpdateVerifiedCustomer(context.Context
 }
 func (UnimplementedCustomerServiceServer) GetCustomerIDByEmail(context.Context, *GetCustomerIDByEmailRequest) (*GetCustomerIDByEmailResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCustomerIDByEmail not implemented")
+}
+func (UnimplementedCustomerServiceServer) GetCustomerDetailsByEmail(context.Context, *GetCustomerDetailsByEmailRequest) (*GetCustomerDetailsByEmailResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCustomerDetailsByEmail not implemented")
 }
 func (UnimplementedCustomerServiceServer) mustEmbedUnimplementedCustomerServiceServer() {}
 
@@ -152,6 +166,24 @@ func _CustomerService_GetCustomerIDByEmail_Handler(srv interface{}, ctx context.
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CustomerService_GetCustomerDetailsByEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCustomerDetailsByEmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CustomerServiceServer).GetCustomerDetailsByEmail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.v1.customer.CustomerService/GetCustomerDetailsByEmail",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CustomerServiceServer).GetCustomerDetailsByEmail(ctx, req.(*GetCustomerDetailsByEmailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CustomerService_ServiceDesc is the grpc.ServiceDesc for CustomerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -170,6 +202,10 @@ var CustomerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCustomerIDByEmail",
 			Handler:    _CustomerService_GetCustomerIDByEmail_Handler,
+		},
+		{
+			MethodName: "GetCustomerDetailsByEmail",
+			Handler:    _CustomerService_GetCustomerDetailsByEmail_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

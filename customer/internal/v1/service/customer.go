@@ -15,6 +15,7 @@ type (
 		CreateCustomer(req *model.CreateCustomerRequest) (*model.CreateCustomerResponse, error)
 		UpdateVerifiedCustomer(email string) (*model.UpdateVerifiedCustomerResponse, error)
 		GetCustomerIDByEmail(req *model.GetCustomerIDByEmailRequest) (*model.GetCustomerIDByEmailResponse, error)
+		GetCustomerDetailsByEmail(req *model.GetCustomerDetailsByEmailRequest) (*model.GetCustomerDetailsByEmailResponse, error)
 	}
 
 	// CustomerServiceImpl is an app customer struct that consists of all the dependencies needed for customer service
@@ -79,5 +80,25 @@ func (cs *CustomerServiceImpl) GetCustomerIDByEmail(req *model.GetCustomerIDByEm
 
 	return &model.GetCustomerIDByEmailResponse{
 		CustomerID: getCustomerID,
+	}, nil
+}
+
+func (cs *CustomerServiceImpl) GetCustomerDetailsByEmail(req *model.GetCustomerDetailsByEmailRequest) (*model.GetCustomerDetailsByEmailResponse, error) {
+	tr := cs.Tracer.Tracer("Customer-GetCustomerDetailsByEmail Service")
+	_, span := tr.Start(cs.Context, "Start GetCustomerDetailsByEmail")
+	defer span.End()
+
+	getCustomer, err := cs.CustomerRepo.GetCustomerDetailsByEmail(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.GetCustomerDetailsByEmailResponse{
+		ID:          getCustomer.ID,
+		FullName:    getCustomer.FullName,
+		PhoneNumber: getCustomer.PhoneNumber,
+		Email:       getCustomer.Email,
+		Password:    getCustomer.Password,
+		Pin:         getCustomer.Pin,
 	}, nil
 }

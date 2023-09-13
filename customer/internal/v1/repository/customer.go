@@ -19,6 +19,7 @@ type (
 		CreateCustomer(req *model.CreateCustomerRequest) (int64, bool, error)
 		UpdateVerifiedCustomer(email string) (bool, error)
 		GetCustomerIDByEmail(req *model.GetCustomerIDByEmailRequest) (int64, error)
+		GetCustomerDetailsByEmail(req *model.GetCustomerDetailsByEmailRequest) (*model.GetCustomerDetailsByEmailResponse, error)
 	}
 
 	// CustomerRepositoryImpl is an app customer struct that consists of all the dependencies needed for customer repository
@@ -82,11 +83,11 @@ func (cr *CustomerRepositoryImpl) CreateCustomer(req *model.CreateCustomerReques
 			id, err := helper.GenerateSnowflakeID()
 			if err != nil {
 				// do rollback tx
-				err := tx.Rollback(cr.Context)
-				if err != nil {
-					cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer tx.Rollback ERROR ", err)
+				errRollback := tx.Rollback(cr.Context)
+				if errRollback != nil {
+					cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer tx.Rollback ERROR ", errRollback)
 
-					return 0, false, err
+					return 0, false, errRollback
 				}
 
 				cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer GenerateSnowflakeID ERROR ", err)
@@ -94,19 +95,19 @@ func (cr *CustomerRepositoryImpl) CreateCustomer(req *model.CreateCustomerReques
 				return 0, false, err
 			}
 
-			_, errCreate := tx.Exec(cr.Context, sql, id, req.FullName, req.Email, req.PhoneNumber, req.Password, req.Pin, false)
-			if errCreate != nil {
+			_, err = tx.Exec(cr.Context, sql, id, req.FullName, req.Email, req.PhoneNumber, req.Password, req.Pin, false)
+			if err != nil {
 				// do rollback tx
-				err := tx.Rollback(cr.Context)
-				if err != nil {
-					cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer tx.Rollback ERROR ", err)
+				errRollback := tx.Rollback(cr.Context)
+				if errRollback != nil {
+					cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer tx.Rollback ERROR ", errRollback)
 
-					return 0, false, err
+					return 0, false, errRollback
 				}
 
 				cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer tx.Exec ERROR ", err)
 
-				return 0, false, errCreate
+				return 0, false, err
 			}
 
 			// do commit tx
@@ -121,11 +122,11 @@ func (cr *CustomerRepositoryImpl) CreateCustomer(req *model.CreateCustomerReques
 		}
 
 		// do rollback tx
-		err := tx.Rollback(cr.Context)
-		if err != nil {
-			cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer tx.Rollback ERROR", err)
+		errRollback := tx.Rollback(cr.Context)
+		if errRollback != nil {
+			cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer tx.Rollback ERROR", errRollback)
 
-			return 0, false, err
+			return 0, false, errRollback
 		}
 
 		cr.Logger.Error("CustomerRepositoryImpl.CreateCustomer row.Scan ERROR", err)
@@ -173,22 +174,22 @@ func (cr *CustomerRepositoryImpl) UpdateVerifiedCustomer(email string) (bool, er
 		// if data not found
 		if err.Error() == pgx.ErrNoRows.Error() {
 			// do rollback tx
-			err := tx.Rollback(cr.Context)
-			if err != nil {
-				cr.Logger.Error("CustomerRepositoryImpl.UpdateVerifiedCustomer tx.Rollback ERROR", err)
+			errRollback := tx.Rollback(cr.Context)
+			if errRollback != nil {
+				cr.Logger.Error("CustomerRepositoryImpl.UpdateVerifiedCustomer tx.Rollback ERROR", errRollback)
 
-				return false, err
+				return false, errRollback
 			}
 
 			return false, err
 		}
 
 		// do rollback tx
-		err := tx.Rollback(cr.Context)
-		if err != nil {
-			cr.Logger.Error("CustomerRepositoryImpl.UpdateVerifiedCustomer tx.Rollback ERROR", err)
+		errRollback := tx.Rollback(cr.Context)
+		if errRollback != nil {
+			cr.Logger.Error("CustomerRepositoryImpl.UpdateVerifiedCustomer tx.Rollback ERROR", errRollback)
 
-			return false, err
+			return false, errRollback
 		}
 
 		cr.Logger.Error("CustomerRepositoryImpl.UpdateVerifiedCustomer row.Scan ERROR", err)
@@ -205,14 +206,14 @@ func (cr *CustomerRepositoryImpl) UpdateVerifiedCustomer(email string) (bool, er
 			email = $2
 	`
 
-	_, errUpdate := tx.Exec(cr.Context, sqlUpdate, true, email)
-	if errUpdate != nil {
+	_, err = tx.Exec(cr.Context, sqlUpdate, true, email)
+	if err != nil {
 		// do rollback tx
-		err := tx.Rollback(cr.Context)
-		if err != nil {
-			cr.Logger.Error("CustomerRepositoryImpl.UpdateVerifiedCustomer tx.Rollback ERROR", err)
+		errRollback := tx.Rollback(cr.Context)
+		if errRollback != nil {
+			cr.Logger.Error("CustomerRepositoryImpl.UpdateVerifiedCustomer tx.Rollback ERROR", errRollback)
 
-			return false, err
+			return false, errRollback
 		}
 
 		cr.Logger.Error("CustomerRepositoryImpl.UpdateVerifiedCustomer tx.Exec ERROR", err)
@@ -255,4 +256,46 @@ func (cr *CustomerRepositoryImpl) GetCustomerIDByEmail(req *model.GetCustomerIDB
 	}
 
 	return getCustomerID, nil
+}
+
+func (cr *CustomerRepositoryImpl) GetCustomerDetailsByEmail(req *model.GetCustomerDetailsByEmailRequest) (*model.GetCustomerDetailsByEmailResponse, error) {
+	tr := cr.Tracer.Tracer("Customer-GetCustomerDetailsByEmail Repository")
+	_, span := tr.Start(cr.Context, "Start GetCustomerDetailsByEmail")
+	defer span.End()
+
+	data := &model.GetCustomerDetailsByEmailResponse{}
+
+	sql := `
+		SELECT
+			id,
+			full_name,
+			email,
+			phone_number,
+			password,
+			pin
+		FROM 
+			customer
+		WHERE
+			email = $1
+		AND
+			is_verified = true
+	`
+
+	row := cr.DB.QueryRow(cr.Context, sql, req.Email)
+
+	err := row.Scan(&data.ID, &data.FullName, &data.Email, &data.PhoneNumber, &data.Password, &data.Pin)
+	if err != nil {
+		// if data not found
+		if err.Error() == pgx.ErrNoRows.Error() {
+			cr.Logger.Info("CustomerRepositoryImpl.GetCustomerDetailsByEmail email not found ", err)
+
+			return nil, model.NewError(model.NotFound, "email not found")
+		}
+
+		cr.Logger.Error("CustomerRepositoryImpl.GetCustomerDetailsByEmail row.Scan ERROR ", err)
+
+		return nil, err
+	}
+
+	return data, nil
 }
