@@ -64,11 +64,11 @@ func (wr *WalletRepositoryImpl) CreateWallet(req *model.CreateWalletRequest) (in
 	id, err := helper.GenerateSnowflakeID()
 	if err != nil {
 		// do rollback tx
-		err := tx.Rollback(wr.Context)
-		if err != nil {
-			wr.Logger.Error("WalletRepositoryImpl.CreateWallet tx.Rollback ERROR", err)
+		errRollback := tx.Rollback(wr.Context)
+		if errRollback != nil {
+			wr.Logger.Error("WalletRepositoryImpl.CreateWallet tx.Rollback ERROR", errRollback)
 
-			return 0, err
+			return 0, errRollback
 		}
 
 		wr.Logger.Error("WalletRepositoryImpl.CreateWallet GenerateSnowflakeID ERROR", err)
@@ -79,11 +79,11 @@ func (wr *WalletRepositoryImpl) CreateWallet(req *model.CreateWalletRequest) (in
 	_, err = tx.Exec(wr.Context, sql, id, req.CustomerID, 0)
 	if err != nil {
 		// do rollback tx
-		err := tx.Rollback(wr.Context)
-		if err != nil {
-			wr.Logger.Error("WalletRepositoryImpl.CreateWallet tx.Rollback ERROR", err)
+		errRollback := tx.Rollback(wr.Context)
+		if errRollback != nil {
+			wr.Logger.Error("WalletRepositoryImpl.CreateWallet tx.Rollback ERROR", errRollback)
 
-			return 0, err
+			return 0, errRollback
 		}
 
 		wr.Logger.Error("WalletRepositoryImpl.CreateWallet tx.Exec ERROR", err)
