@@ -19,6 +19,7 @@ type (
 	AuthController interface {
 		Register(ctx *gin.Context)
 		VerifyRegister(ctx *gin.Context)
+		Login(ctx *gin.Context)
 	}
 
 	// AuthControllerImpl is an app auth struct that consists of all the dependencies needed for auth controller
@@ -43,11 +44,11 @@ func NewAuthController(ctx context.Context, config *config.Configuration, logger
 }
 
 // Check godoc
-// @Summary      Register users
+// @Summary      Register customer/merchant
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        user body model.RegisterRequest true "register user"
+// @Param        user body model.RegisterRequest true "register customer/merchant"
 // @Success      201  {object}  helper.BaseResponse
 // @Failure      400  {object}  helper.BaseResponse
 // @Failure      500  {object}  helper.BaseResponse
@@ -79,7 +80,7 @@ func (ac *AuthControllerImpl) Register(ctx *gin.Context) {
 }
 
 // Check godoc
-// @Summary      Verify Register Users
+// @Summary      Verify Register customer/merchant
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
@@ -115,4 +116,46 @@ func (ac *AuthControllerImpl) VerifyRegister(ctx *gin.Context) {
 	}
 
 	helper.NewResponses[any](ctx, http.StatusOK, "Verify success, Redirecting to Login Page....", data, err, nil)
+}
+
+// Check godoc
+// @Summary      Login customer/merchant
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        user body model.LoginRequest true "login"
+// @Success      200  {object}  helper.BaseResponse
+// @Failure      400  {object}  helper.BaseResponse
+// @Failure      404  {object}  helper.BaseResponse
+// @Failure      500  {object}  helper.BaseResponse
+// @Router       /login [post]
+func (ac *AuthControllerImpl) Login(ctx *gin.Context) {
+	var req model.LoginRequest
+
+	tr := ac.Tracer.Tracer("Auth-Login Controller")
+	_, span := tr.Start(ctx, "Start Login")
+	defer span.End()
+
+	if err := ctx.BindJSON(&req); err != nil {
+		helper.NewResponses[any](ctx, http.StatusBadRequest, "Invalid request", nil, err, nil)
+		return
+	}
+
+	data, err := ac.AuthSvc.LoginCustomerOrMerchant(ctx, &req)
+	if err != nil {
+		if strings.Contains(err.Error(), string(model.Validation)) {
+			helper.NewResponses[any](ctx, http.StatusBadRequest, err.Error(), nil, err, nil)
+			return
+		}
+
+		if strings.Contains(err.Error(), string(model.NotFound)) {
+			helper.NewResponses[any](ctx, http.StatusNotFound, err.Error(), nil, err, nil)
+			return
+		}
+
+		helper.NewResponses[any](ctx, http.StatusInternalServerError, "Failed login customer/merchant", nil, err, nil)
+		return
+	}
+
+	helper.NewResponses[any](ctx, http.StatusOK, "Success login", data, nil, nil)
 }

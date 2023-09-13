@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type MerchantServiceClient interface {
 	CreateMerchant(ctx context.Context, in *MerchantRequest, opts ...grpc.CallOption) (*MerchantResponse, error)
 	UpdateVerifiedMerchant(ctx context.Context, in *UpdateVerifiedMerchantRequest, opts ...grpc.CallOption) (*UpdateVerifiedMerchantResponse, error)
+	GetMerchantDetailsByEmail(ctx context.Context, in *GetMerchantDetailsByEmailRequest, opts ...grpc.CallOption) (*GetMerchantDetailsByEmailResponse, error)
 }
 
 type merchantServiceClient struct {
@@ -52,12 +53,22 @@ func (c *merchantServiceClient) UpdateVerifiedMerchant(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *merchantServiceClient) GetMerchantDetailsByEmail(ctx context.Context, in *GetMerchantDetailsByEmailRequest, opts ...grpc.CallOption) (*GetMerchantDetailsByEmailResponse, error) {
+	out := new(GetMerchantDetailsByEmailResponse)
+	err := c.cc.Invoke(ctx, "/proto.v1.merchant.MerchantService/GetMerchantDetailsByEmail", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MerchantServiceServer is the server API for MerchantService service.
 // All implementations must embed UnimplementedMerchantServiceServer
 // for forward compatibility
 type MerchantServiceServer interface {
 	CreateMerchant(context.Context, *MerchantRequest) (*MerchantResponse, error)
 	UpdateVerifiedMerchant(context.Context, *UpdateVerifiedMerchantRequest) (*UpdateVerifiedMerchantResponse, error)
+	GetMerchantDetailsByEmail(context.Context, *GetMerchantDetailsByEmailRequest) (*GetMerchantDetailsByEmailResponse, error)
 	mustEmbedUnimplementedMerchantServiceServer()
 }
 
@@ -70,6 +81,9 @@ func (UnimplementedMerchantServiceServer) CreateMerchant(context.Context, *Merch
 }
 func (UnimplementedMerchantServiceServer) UpdateVerifiedMerchant(context.Context, *UpdateVerifiedMerchantRequest) (*UpdateVerifiedMerchantResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateVerifiedMerchant not implemented")
+}
+func (UnimplementedMerchantServiceServer) GetMerchantDetailsByEmail(context.Context, *GetMerchantDetailsByEmailRequest) (*GetMerchantDetailsByEmailResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMerchantDetailsByEmail not implemented")
 }
 func (UnimplementedMerchantServiceServer) mustEmbedUnimplementedMerchantServiceServer() {}
 
@@ -120,6 +134,24 @@ func _MerchantService_UpdateVerifiedMerchant_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MerchantService_GetMerchantDetailsByEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMerchantDetailsByEmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MerchantServiceServer).GetMerchantDetailsByEmail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.v1.merchant.MerchantService/GetMerchantDetailsByEmail",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MerchantServiceServer).GetMerchantDetailsByEmail(ctx, req.(*GetMerchantDetailsByEmailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MerchantService_ServiceDesc is the grpc.ServiceDesc for MerchantService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,6 +166,10 @@ var MerchantService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateVerifiedMerchant",
 			Handler:    _MerchantService_UpdateVerifiedMerchant_Handler,
+		},
+		{
+			MethodName: "GetMerchantDetailsByEmail",
+			Handler:    _MerchantService_GetMerchantDetailsByEmail_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
