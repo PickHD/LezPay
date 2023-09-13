@@ -8,6 +8,7 @@ service CustomerService {
     rpc CreateCustomer (CustomerRequest) returns (CustomerResponse);
     rpc UpdateVerifiedCustomer (UpdateVerifiedCustomerRequest) returns (UpdateVerifiedCustomerResponse);
     rpc GetCustomerIDByEmail (GetCustomerIDByEmailRequest) returns (GetCustomerIDByEmailResponse);
+    rpc GetCustomerDetailsByEmail (GetCustomerDetailsByEmailRequest) returns (GetCustomerDetailsByEmailResponse);
 }
 
 message CustomerRequest {
@@ -37,4 +38,17 @@ message GetCustomerIDByEmailRequest {
 
 message GetCustomerIDByEmailResponse {
     uint64 customer_id = 1;
+}
+
+message GetCustomerDetailsByEmailRequest {
+    string email=1;
+}
+
+message GetCustomerDetailsByEmailResponse {
+    uint64 id = 1;
+    string full_name = 2;
+    string email = 3;
+    string phone_number = 4;
+    string password = 5;
+    string pin = 6;
 }

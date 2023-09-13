@@ -7,6 +7,7 @@ option go_package = "./";
 service MerchantService {
     rpc CreateMerchant (MerchantRequest) returns (MerchantResponse);
     rpc UpdateVerifiedMerchant (UpdateVerifiedMerchantRequest) returns (UpdateVerifiedMerchantResponse);
+    rpc GetMerchantDetailsByEmail (GetMerchantDetailsByEmailRequest) returns (GetMerchantDetailsByEmailResponse);
 }
 
 message MerchantRequest {
@@ -28,4 +29,16 @@ message UpdateVerifiedMerchantRequest {
 
 message UpdateVerifiedMerchantResponse {
     bool is_verified = 1;
+}
+
+message GetMerchantDetailsByEmailRequest {
+    string email=1;
+}
+
+message GetMerchantDetailsByEmailResponse {
+    uint64 id = 1;
+    string full_name = 2;
+    string email = 3;
+    string phone_number = 4;
+    string password = 5;
 }
