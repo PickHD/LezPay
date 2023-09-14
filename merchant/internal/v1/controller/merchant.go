@@ -20,6 +20,7 @@ type (
 		CreateMerchant(ctx context.Context, req *merchantpb.MerchantRequest) (*merchantpb.MerchantResponse, error)
 		UpdateVerifiedMerchant(ctx context.Context, req *merchantpb.UpdateVerifiedMerchantRequest) (*merchantpb.UpdateVerifiedMerchantResponse, error)
 		GetMerchantDetailsByEmail(ctx context.Context, req *merchantpb.GetMerchantDetailsByEmailRequest) (*merchantpb.GetMerchantDetailsByEmailResponse, error)
+		UpdateMerchantPasswordByEmail(ctx context.Context, req *merchantpb.UpdateMerchantPasswordByEmailRequest) (*merchantpb.UpdateMerchantPasswordByEmailResponse, error)
 	}
 
 	// MerchantControllerImpl is an app Merchant struct that consists of all the dependencies needed for Merchant controller
@@ -81,7 +82,7 @@ func (mc *MerchantControllerImpl) UpdateVerifiedMerchant(ctx context.Context, re
 }
 
 func (mc *MerchantControllerImpl) GetMerchantDetailsByEmail(ctx context.Context, req *merchantpb.GetMerchantDetailsByEmailRequest) (*merchantpb.GetMerchantDetailsByEmailResponse, error) {
-	tr := mc.Tracer.Tracer("Customer-GetMerchantDetailsByEmail Controller")
+	tr := mc.Tracer.Tracer("Merchant-GetMerchantDetailsByEmail Controller")
 	_, span := tr.Start(ctx, "Start GetMerchantDetailsByEmail")
 	defer span.End()
 
@@ -104,5 +105,25 @@ func (mc *MerchantControllerImpl) GetMerchantDetailsByEmail(ctx context.Context,
 		Email:       data.Email,
 		PhoneNumber: data.PhoneNumber,
 		Password:    data.Password,
+	}, nil
+}
+
+func (mc *MerchantControllerImpl) UpdateMerchantPasswordByEmail(ctx context.Context, req *merchantpb.UpdateMerchantPasswordByEmailRequest) (*merchantpb.UpdateMerchantPasswordByEmailResponse, error) {
+	tr := mc.Tracer.Tracer("Merchant-UpdateMerchantPasswordByEmail Controller")
+	_, span := tr.Start(ctx, "Start UpdateMerchantPasswordByEmail")
+	defer span.End()
+
+	updatePasswordReq := model.UpdateMerchantPasswordByEmailRequest{
+		Email:    req.GetEmail(),
+		Password: req.GetPassword(),
+	}
+
+	data, err := mc.MerchantSvc.UpdateMerchantPasswordByEmail(&updatePasswordReq)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed Update Password %s", err.Error())
+	}
+
+	return &merchantpb.UpdateMerchantPasswordByEmailResponse{
+		Email: data.Email,
 	}, nil
 }

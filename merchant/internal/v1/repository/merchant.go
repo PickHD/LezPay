@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/PickHD/LezPay/merchant/internal/v1/config"
 	"github.com/PickHD/LezPay/merchant/internal/v1/helper"
@@ -19,6 +20,7 @@ type (
 		CreateMerchant(req *model.CreateMerchantRequest) (int64, bool, error)
 		UpdateVerifiedMerchant(email string) (bool, error)
 		GetMerchantDetailsByEmail(req *model.GetMerchantDetailsByEmailRequest) (*model.GetMerchantDetailsByEmailResponse, error)
+		UpdateMerchantPasswordByEmail(req *model.UpdateMerchantPasswordByEmailRequest) (*model.UpdateMerchantPasswordByEmailResponse, error)
 	}
 
 	// MerchantRepositoryImpl is an app merchant struct that consists of all the dependencies needed for merchant repository
@@ -62,7 +64,7 @@ func (mr *MerchantRepositoryImpl) CreateMerchant(req *model.CreateMerchantReques
 		SELECT 
 			email
 		FROM
-			Merchant
+			merchant
 		WHERE
 			email = $1
 	`
@@ -200,12 +202,13 @@ func (mr *MerchantRepositoryImpl) UpdateVerifiedMerchant(email string) (bool, er
 		UPDATE 
 			merchant
 		SET
-			is_verified = $1
+			is_verified = $1,
+			updated_at = $2
 		WHERE
-			email = $2
+			email = $3
 	`
 
-	_, err = tx.Exec(mr.Context, sqlUpdate, true, email)
+	_, err = tx.Exec(mr.Context, sqlUpdate, true, time.Now(), email)
 	if err != nil {
 		// do rollback tx
 		errRollback := tx.Rollback(mr.Context)
@@ -270,4 +273,55 @@ func (mr *MerchantRepositoryImpl) GetMerchantDetailsByEmail(req *model.GetMercha
 	}
 
 	return data, nil
+}
+
+func (mr *MerchantRepositoryImpl) UpdateMerchantPasswordByEmail(req *model.UpdateMerchantPasswordByEmailRequest) (*model.UpdateMerchantPasswordByEmailResponse, error) {
+	tr := mr.Tracer.Tracer("Merchant-UpdateMerchantPasswordByEmail Repository")
+	_, span := tr.Start(mr.Context, "Start UpdateMerchantPasswordByEmail")
+	defer span.End()
+
+	// begin tx
+	tx, err := mr.DB.Begin(mr.Context)
+	if err != nil {
+		mr.Logger.Error("MerchantRepositoryImpl.UpdateMerchantPasswordByEmail DB.Begin ERROR", err)
+
+		return nil, err
+	}
+
+	sqlUpdate := `
+		UPDATE 
+			merchant
+		SET
+			password = $1,
+			updated_at = $2
+		WHERE
+			email = $3
+	`
+
+	_, err = tx.Exec(mr.Context, sqlUpdate, req.Password, time.Now(), req.Email)
+	if err != nil {
+		// do rollback tx
+		errRollback := tx.Rollback(mr.Context)
+		if errRollback != nil {
+			mr.Logger.Error("MerchantRepositoryImpl.UpdateMerchantPasswordByEmail tx.Rollback ERROR", errRollback)
+
+			return nil, errRollback
+		}
+
+		mr.Logger.Error("MerchantRepositoryImpl.UpdateMerchantPasswordByEmail tx.Exec ERROR", err)
+
+		return nil, err
+	}
+
+	// do commit tx
+	err = tx.Commit(mr.Context)
+	if err != nil {
+		mr.Logger.Error("MerchantRepositoryImpl.UpdateMerchantPasswordByEmail tx.Commit ERROR", err)
+
+		return nil, err
+	}
+
+	return &model.UpdateMerchantPasswordByEmailResponse{
+		Email: req.Email,
+	}, nil
 }

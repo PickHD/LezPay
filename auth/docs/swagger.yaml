@@ -18,6 +18,13 @@ definitions:
       total_page:
         type: integer
     type: object
+  model.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+      user_type:
+        $ref: '#/definitions/model.UserType'
+    type: object
   model.LoginRequest:
     properties:
       email:
@@ -40,6 +47,11 @@ definitions:
       user_type:
         $ref: '#/definitions/model.UserType'
     type: object
+  model.ResetPasswordRequest:
+    properties:
+      password:
+        type: string
+    type: object
   model.UserType:
     enum:
     - customer
@@ -59,6 +71,76 @@ info:
   title: LezPay API
   version: "1.0"
 paths:
+  /forgot-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: forgot password customer/merchant
+        in: body
+        name: forgotPassword
+        required: true
+        schema:
+          $ref: '#/definitions/model.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+      summary: Forgot Password customer/merchant
+      tags:
+      - Auth
+  /forgot-password/verify:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Code Verification
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: customer|merchant
+        in: query
+        name: user_type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+      summary: Verify Forgot Password customer/merchant
+      tags:
+      - Auth
   /health-check:
     get:
       consumes:
@@ -174,6 +256,49 @@ paths:
           schema:
             $ref: '#/definitions/helper.BaseResponse'
       summary: Verify Register customer/merchant
+      tags:
+      - Auth
+  /reset-password:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Code Verification
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: customer|merchant
+        in: query
+        name: user_type
+        required: true
+        type: string
+      - description: reset password customer/merchant
+        in: body
+        name: forgotPassword
+        required: true
+        schema:
+          $ref: '#/definitions/model.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+      summary: Reset Password customer/merchant
       tags:
       - Auth
 schemes:

@@ -26,6 +26,7 @@ type CustomerServiceClient interface {
 	UpdateVerifiedCustomer(ctx context.Context, in *UpdateVerifiedCustomerRequest, opts ...grpc.CallOption) (*UpdateVerifiedCustomerResponse, error)
 	GetCustomerIDByEmail(ctx context.Context, in *GetCustomerIDByEmailRequest, opts ...grpc.CallOption) (*GetCustomerIDByEmailResponse, error)
 	GetCustomerDetailsByEmail(ctx context.Context, in *GetCustomerDetailsByEmailRequest, opts ...grpc.CallOption) (*GetCustomerDetailsByEmailResponse, error)
+	UpdateCustomerPasswordByEmail(ctx context.Context, in *UpdateCustomerPasswordByEmailRequest, opts ...grpc.CallOption) (*UpdateCustomerPasswordByEmailResponse, error)
 }
 
 type customerServiceClient struct {
@@ -72,6 +73,15 @@ func (c *customerServiceClient) GetCustomerDetailsByEmail(ctx context.Context, i
 	return out, nil
 }
 
+func (c *customerServiceClient) UpdateCustomerPasswordByEmail(ctx context.Context, in *UpdateCustomerPasswordByEmailRequest, opts ...grpc.CallOption) (*UpdateCustomerPasswordByEmailResponse, error) {
+	out := new(UpdateCustomerPasswordByEmailResponse)
+	err := c.cc.Invoke(ctx, "/proto.v1.customer.CustomerService/UpdateCustomerPasswordByEmail", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CustomerServiceServer is the server API for CustomerService service.
 // All implementations must embed UnimplementedCustomerServiceServer
 // for forward compatibility
@@ -80,6 +90,7 @@ type CustomerServiceServer interface {
 	UpdateVerifiedCustomer(context.Context, *UpdateVerifiedCustomerRequest) (*UpdateVerifiedCustomerResponse, error)
 	GetCustomerIDByEmail(context.Context, *GetCustomerIDByEmailRequest) (*GetCustomerIDByEmailResponse, error)
 	GetCustomerDetailsByEmail(context.Context, *GetCustomerDetailsByEmailRequest) (*GetCustomerDetailsByEmailResponse, error)
+	UpdateCustomerPasswordByEmail(context.Context, *UpdateCustomerPasswordByEmailRequest) (*UpdateCustomerPasswordByEmailResponse, error)
 	mustEmbedUnimplementedCustomerServiceServer()
 }
 
@@ -98,6 +109,9 @@ func (UnimplementedCustomerServiceServer) GetCustomerIDByEmail(context.Context, 
 }
 func (UnimplementedCustomerServiceServer) GetCustomerDetailsByEmail(context.Context, *GetCustomerDetailsByEmailRequest) (*GetCustomerDetailsByEmailResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCustomerDetailsByEmail not implemented")
+}
+func (UnimplementedCustomerServiceServer) UpdateCustomerPasswordByEmail(context.Context, *UpdateCustomerPasswordByEmailRequest) (*UpdateCustomerPasswordByEmailResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateCustomerPasswordByEmail not implemented")
 }
 func (UnimplementedCustomerServiceServer) mustEmbedUnimplementedCustomerServiceServer() {}
 
@@ -184,6 +198,24 @@ func _CustomerService_GetCustomerDetailsByEmail_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CustomerService_UpdateCustomerPasswordByEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCustomerPasswordByEmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CustomerServiceServer).UpdateCustomerPasswordByEmail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.v1.customer.CustomerService/UpdateCustomerPasswordByEmail",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CustomerServiceServer).UpdateCustomerPasswordByEmail(ctx, req.(*UpdateCustomerPasswordByEmailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CustomerService_ServiceDesc is the grpc.ServiceDesc for CustomerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -206,6 +238,10 @@ var CustomerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetCustomerDetailsByEmail",
 			Handler:    _CustomerService_GetCustomerDetailsByEmail_Handler,
+		},
+		{
+			MethodName: "UpdateCustomerPasswordByEmail",
+			Handler:    _CustomerService_UpdateCustomerPasswordByEmail_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -39,6 +39,17 @@ type (
 		ExpiredAt   time.Time `json:"expired_at"`
 		Type        string    `json:"type"`
 	}
+
+	// ForgotPasswordRequest consist request of forgot password
+	ForgotPasswordRequest struct {
+		Email    string   `json:"email"`
+		UserType UserType `json:"user_type"`
+	}
+
+	// ResetPasswordRequest consist request of reset password
+	ResetPasswordRequest struct {
+		Password string `json:"password"`
+	}
 )
 
 const (
