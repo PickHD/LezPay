@@ -25,6 +25,7 @@ type MerchantServiceClient interface {
 	CreateMerchant(ctx context.Context, in *MerchantRequest, opts ...grpc.CallOption) (*MerchantResponse, error)
 	UpdateVerifiedMerchant(ctx context.Context, in *UpdateVerifiedMerchantRequest, opts ...grpc.CallOption) (*UpdateVerifiedMerchantResponse, error)
 	GetMerchantDetailsByEmail(ctx context.Context, in *GetMerchantDetailsByEmailRequest, opts ...grpc.CallOption) (*GetMerchantDetailsByEmailResponse, error)
+	UpdateMerchantPasswordByEmail(ctx context.Context, in *UpdateMerchantPasswordByEmailRequest, opts ...grpc.CallOption) (*UpdateMerchantPasswordByEmailResponse, error)
 }
 
 type merchantServiceClient struct {
@@ -62,6 +63,15 @@ func (c *merchantServiceClient) GetMerchantDetailsByEmail(ctx context.Context, i
 	return out, nil
 }
 
+func (c *merchantServiceClient) UpdateMerchantPasswordByEmail(ctx context.Context, in *UpdateMerchantPasswordByEmailRequest, opts ...grpc.CallOption) (*UpdateMerchantPasswordByEmailResponse, error) {
+	out := new(UpdateMerchantPasswordByEmailResponse)
+	err := c.cc.Invoke(ctx, "/proto.v1.merchant.MerchantService/UpdateMerchantPasswordByEmail", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MerchantServiceServer is the server API for MerchantService service.
 // All implementations must embed UnimplementedMerchantServiceServer
 // for forward compatibility
@@ -69,6 +79,7 @@ type MerchantServiceServer interface {
 	CreateMerchant(context.Context, *MerchantRequest) (*MerchantResponse, error)
 	UpdateVerifiedMerchant(context.Context, *UpdateVerifiedMerchantRequest) (*UpdateVerifiedMerchantResponse, error)
 	GetMerchantDetailsByEmail(context.Context, *GetMerchantDetailsByEmailRequest) (*GetMerchantDetailsByEmailResponse, error)
+	UpdateMerchantPasswordByEmail(context.Context, *UpdateMerchantPasswordByEmailRequest) (*UpdateMerchantPasswordByEmailResponse, error)
 	mustEmbedUnimplementedMerchantServiceServer()
 }
 
@@ -84,6 +95,9 @@ func (UnimplementedMerchantServiceServer) UpdateVerifiedMerchant(context.Context
 }
 func (UnimplementedMerchantServiceServer) GetMerchantDetailsByEmail(context.Context, *GetMerchantDetailsByEmailRequest) (*GetMerchantDetailsByEmailResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMerchantDetailsByEmail not implemented")
+}
+func (UnimplementedMerchantServiceServer) UpdateMerchantPasswordByEmail(context.Context, *UpdateMerchantPasswordByEmailRequest) (*UpdateMerchantPasswordByEmailResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateMerchantPasswordByEmail not implemented")
 }
 func (UnimplementedMerchantServiceServer) mustEmbedUnimplementedMerchantServiceServer() {}
 
@@ -152,6 +166,24 @@ func _MerchantService_GetMerchantDetailsByEmail_Handler(srv interface{}, ctx con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MerchantService_UpdateMerchantPasswordByEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMerchantPasswordByEmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MerchantServiceServer).UpdateMerchantPasswordByEmail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.v1.merchant.MerchantService/UpdateMerchantPasswordByEmail",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MerchantServiceServer).UpdateMerchantPasswordByEmail(ctx, req.(*UpdateMerchantPasswordByEmailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MerchantService_ServiceDesc is the grpc.ServiceDesc for MerchantService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -170,6 +202,10 @@ var MerchantService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMerchantDetailsByEmail",
 			Handler:    _MerchantService_GetMerchantDetailsByEmail_Handler,
+		},
+		{
+			MethodName: "UpdateMerchantPasswordByEmail",
+			Handler:    _MerchantService_UpdateMerchantPasswordByEmail_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
