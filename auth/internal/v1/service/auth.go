@@ -12,6 +12,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	customerpb "github.com/PickHD/LezPay/auth/pkg/proto/v1/customer"
 	merchantpb "github.com/PickHD/LezPay/auth/pkg/proto/v1/merchant"
@@ -22,8 +24,10 @@ type (
 	// AuthService is an interface that has all the function to be implemented inside auth service
 	AuthService interface {
 		RegisterCustomerOrMerchant(req *model.RegisterRequest) error
-		VerifyRegisterCode(ctx context.Context, code string, userType model.UserType, verifyType model.VerificationType) (*model.VerifyCodeResponse, error)
+		VerifyRegisterOrForgotPasswordCode(ctx context.Context, code string, userType model.UserType, verifyType model.VerificationType) (*model.VerifyCodeResponse, error)
 		LoginCustomerOrMerchant(ctx context.Context, req *model.LoginRequest) (*model.LoginResponse, error)
+		ForgotPasswordCustomerOrMerchant(ctx context.Context, req *model.ForgotPasswordRequest) error
+		ResetPasswordCustomerOrMerchant(ctx context.Context, req *model.ResetPasswordRequest, code string, userType model.UserType) error
 	}
 
 	// AuthServiceImpl is an app auth struct that consists of all the dependencies needed for auth service
@@ -77,41 +81,72 @@ func (as *AuthServiceImpl) RegisterCustomerOrMerchant(req *model.RegisterRequest
 
 	switch req.UserType {
 	case model.Customer:
-		newCustomer := &customerpb.CustomerRequest{
-			FullName:    req.Fullname,
-			Email:       req.Email,
-			PhoneNumber: req.PhoneNumber,
-			Password:    hashPass,
-			Pin:         hashPin,
-		}
-
-		_, err = as.CustomerClients.CreateCustomer(as.Context, newCustomer)
+		// cross check request email with email in merchant table, if exists return error due preventing duplicate email in both tables (customer/merchant)
+		_, err := as.MerchantClients.GetMerchantDetailsByEmail(as.Context, &merchantpb.GetMerchantDetailsByEmailRequest{Email: req.Email})
 		if err != nil {
+			switch status.Code(err) {
+			case codes.NotFound:
+				newCustomer := &customerpb.CustomerRequest{
+					FullName:    req.Fullname,
+					Email:       req.Email,
+					PhoneNumber: req.PhoneNumber,
+					Password:    hashPass,
+					Pin:         hashPin,
+				}
+
+				_, err = as.CustomerClients.CreateCustomer(as.Context, newCustomer)
+				if err != nil {
+					return err
+				}
+
+				err = as.AuthRepo.SendMailVerification(req, model.RegisterVerification)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			}
+
 			return err
 		}
+
+		return model.NewError(model.Validation, "Email already exists as Merchant, please login to merchant page")
 	case model.Merchant:
-		newMerchant := &merchantpb.MerchantRequest{
-			FullName:    req.Fullname,
-			Email:       req.Email,
-			PhoneNumber: req.PhoneNumber,
-			Password:    hashPass,
-		}
-
-		_, err = as.MerchantClients.CreateMerchant(as.Context, newMerchant)
+		// cross check request email with email in customer table, if exists return error due preventing duplicate email in both tables (customer/merchant)
+		_, err := as.CustomerClients.GetCustomerDetailsByEmail(as.Context, &customerpb.GetCustomerDetailsByEmailRequest{Email: req.Email})
 		if err != nil {
+			switch status.Code(err) {
+			case codes.NotFound:
+				newMerchant := &merchantpb.MerchantRequest{
+					FullName:    req.Fullname,
+					Email:       req.Email,
+					PhoneNumber: req.PhoneNumber,
+					Password:    hashPass,
+				}
+
+				_, err = as.MerchantClients.CreateMerchant(as.Context, newMerchant)
+				if err != nil {
+					return err
+				}
+
+				err = as.AuthRepo.SendMailVerification(req, model.RegisterVerification)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			}
+
 			return err
 		}
+
+		return model.NewError(model.Validation, "Email already exists as Customer, please login to customer page")
 	}
 
-	err = as.AuthRepo.SendMailRegisterVerification(req)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return model.NewError(model.Validation, "Invalid user type")
 }
 
-func (as *AuthServiceImpl) VerifyRegisterCode(ctx context.Context, code string, userType model.UserType, verifyType model.VerificationType) (*model.VerifyCodeResponse, error) {
+func (as *AuthServiceImpl) VerifyRegisterOrForgotPasswordCode(ctx context.Context, code string, userType model.UserType, verifyType model.VerificationType) (*model.VerifyCodeResponse, error) {
 	tr := as.Tracer.Tracer("Auth-VerifyRegisterCode service")
 	ctx, span := tr.Start(ctx, "Start VerifyRegisterCode")
 	defer span.End()
@@ -146,7 +181,6 @@ func (as *AuthServiceImpl) VerifyRegisterCode(ctx context.Context, code string, 
 			if err != nil {
 				return nil, err
 			}
-
 		case model.Merchant:
 			// update merchant verify status to true
 			_, err := as.MerchantClients.UpdateVerifiedMerchant(as.Context, &merchantpb.UpdateVerifiedMerchantRequest{Email: email})
@@ -175,7 +209,8 @@ func (as *AuthServiceImpl) LoginCustomerOrMerchant(ctx context.Context, req *mod
 	dataCustomer, err := as.CustomerClients.GetCustomerDetailsByEmail(ctx, &customerpb.GetCustomerDetailsByEmailRequest{Email: req.Email})
 	if err != nil {
 		// if not found, check to merchant client
-		if err.Error() == "Email Not Found" {
+		switch status.Code(err) {
+		case codes.NotFound:
 			dataMerchant, err := as.MerchantClients.GetMerchantDetailsByEmail(ctx, &merchantpb.GetMerchantDetailsByEmailRequest{Email: req.Email})
 			if err != nil {
 				return nil, err
@@ -196,6 +231,7 @@ func (as *AuthServiceImpl) LoginCustomerOrMerchant(ctx context.Context, req *mod
 				Type:        "Bearer",
 				ExpiredAt:   time.Now().Add(expiredAt),
 			}, nil
+
 		}
 
 		return nil, err
@@ -216,6 +252,93 @@ func (as *AuthServiceImpl) LoginCustomerOrMerchant(ctx context.Context, req *mod
 		Type:        "Bearer",
 		ExpiredAt:   time.Now().Add(expiredAt),
 	}, nil
+}
+
+func (as *AuthServiceImpl) ForgotPasswordCustomerOrMerchant(ctx context.Context, req *model.ForgotPasswordRequest) error {
+	tr := as.Tracer.Tracer("Auth-ForgotPasswordCustomerOrMerchant service")
+	_, span := tr.Start(ctx, "Start ForgotPasswordCustomerOrMerchant")
+	defer span.End()
+
+	err := as.validateForgotPasswordRequest(req)
+	if err != nil {
+		return err
+	}
+
+	_, err = as.CustomerClients.GetCustomerDetailsByEmail(ctx, &customerpb.GetCustomerDetailsByEmailRequest{Email: req.Email})
+	if err != nil {
+		// if not found, check to merchant client
+		switch status.Code(err) {
+		case codes.NotFound:
+			_, err = as.MerchantClients.GetMerchantDetailsByEmail(ctx, &merchantpb.GetMerchantDetailsByEmailRequest{Email: req.Email})
+			if err != nil {
+				return err
+			}
+
+			err = as.AuthRepo.SendMailVerification(req, model.ForgotPasswordVerification)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		return err
+	}
+
+	err = as.AuthRepo.SendMailVerification(req, model.ForgotPasswordVerification)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (as *AuthServiceImpl) ResetPasswordCustomerOrMerchant(ctx context.Context, req *model.ResetPasswordRequest, code string, userType model.UserType) error {
+	tr := as.Tracer.Tracer("Auth-ResetPasswordUser service")
+	ctx, span := tr.Start(ctx, "Start ResetPasswordUser")
+	defer span.End()
+
+	err := as.validateResetPasswordRequest(req)
+	if err != nil {
+		return err
+	}
+
+	getEmail, err := as.AuthRepo.GetVerificationByCode(ctx, code, model.ForgotPasswordVerification)
+	if err != nil {
+		if err == redis.Nil {
+			return model.NewError(model.NotFound, "code not found / expired")
+		}
+
+		return err
+	}
+
+	hashedNewPass, err := helper.HashPassword(req.Password)
+	if err != nil {
+		return err
+	}
+
+	switch userType {
+	case model.Customer:
+		reqUpdateNewPassword := &customerpb.UpdateCustomerPasswordByEmailRequest{
+			Email:    getEmail,
+			Password: hashedNewPass,
+		}
+		_, err := as.CustomerClients.UpdateCustomerPasswordByEmail(as.Context, reqUpdateNewPassword)
+		if err != nil {
+			return err
+		}
+	case model.Merchant:
+		reqUpdateNewPassword := &merchantpb.UpdateMerchantPasswordByEmailRequest{
+			Email:    getEmail,
+			Password: hashedNewPass,
+		}
+		_, err := as.MerchantClients.UpdateMerchantPasswordByEmail(as.Context, reqUpdateNewPassword)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (as *AuthServiceImpl) validateRegisterRequest(req *model.RegisterRequest) error {
@@ -253,6 +376,27 @@ func (as *AuthServiceImpl) validateRegisterRequest(req *model.RegisterRequest) e
 func (as *AuthServiceImpl) validateLoginRequest(req *model.LoginRequest) error {
 	if !model.IsValidEmail.MatchString(req.Email) {
 		return model.NewError(model.Validation, "invalid email")
+	}
+
+	return nil
+}
+
+func (as *AuthServiceImpl) validateForgotPasswordRequest(req *model.ForgotPasswordRequest) error {
+	if !model.IsValidEmail.MatchString(req.Email) {
+		return model.NewError(model.Validation, "invalid email")
+	}
+
+	return nil
+}
+
+func (as *AuthServiceImpl) validateResetPasswordRequest(req *model.ResetPasswordRequest) error {
+	if req.Password == "" {
+		return model.NewError(model.Validation, "password required")
+	}
+
+	ok := helper.IsValid(req.Password)
+	if !ok {
+		return model.NewError(model.Validation, "password must min length 7, and at least has 1 each upper,lower,number,special")
 	}
 
 	return nil

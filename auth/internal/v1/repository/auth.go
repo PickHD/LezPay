@@ -18,7 +18,7 @@ import (
 type (
 	// AuthRepository is an interface that has all the function to be implemented inside auth repository
 	AuthRepository interface {
-		SendMailRegisterVerification(req *model.RegisterRequest) error
+		SendMailVerification(req interface{}, verificationType model.VerificationType) error
 		GetVerificationByCode(ctx context.Context, code string, verificationType model.VerificationType) (string, error)
 	}
 
@@ -45,36 +45,82 @@ func NewAuthRepository(ctx context.Context, config *config.Configuration, logger
 	}
 }
 
-func (ar *AuthRepositoryImpl) SendMailRegisterVerification(req *model.RegisterRequest) error {
-	tr := ar.Tracer.Tracer("Auth-SendMailRegisterVerification Repository")
-	_, span := tr.Start(ar.Context, "Start SendMailRegisterVerification")
+func (ar *AuthRepositoryImpl) SendMailVerification(req interface{}, verificationType model.VerificationType) error {
+	tr := ar.Tracer.Tracer("Auth-SendMailVerification Repository")
+	_, span := tr.Start(ar.Context, "Start SendMailVerification")
 	defer span.End()
 
 	codeVerification := helper.RandomStringBytesMaskImprSrcSB(25)
 	expiredCodeDuration := time.Minute * time.Duration(ar.Config.Redis.TTL)
 
-	err := ar.Redis.SetEx(ar.Context, fmt.Sprintf(model.VerificationKey, model.RegisterVerification, codeVerification), req.Email, expiredCodeDuration).Err()
-	if err != nil {
-		ar.Logger.Error("AuthRepositoryImpl SetEx ERROR, ", err)
+	switch verificationType {
+	case model.RegisterVerification:
+		reqRegister, ok := req.(*model.RegisterRequest)
+		if !ok {
+			ar.Logger.Error("AuthRepositoryImpl.SendMailVerification type assertion ERROR, ", model.NewError(model.Type, "failed to convert data"))
 
-		return err
+			return model.NewError(model.Type, "failed to convert data")
+		}
+
+		err := ar.Redis.SetEx(ar.Context, fmt.Sprintf(model.VerificationKey, model.RegisterVerification, codeVerification), reqRegister.Email, expiredCodeDuration).Err()
+		if err != nil {
+			ar.Logger.Error("AuthRepositoryImpl.SendMailVerification SetEx ERROR, ", err)
+
+			return err
+		}
+
+		emailLink := fmt.Sprintf("http://localhost:%d/v1/register/verify?code=%s&user_type=%s", ar.Config.Server.AppPort, codeVerification, reqRegister.UserType)
+
+		result, err := ar.constructEmailTemplate(reqRegister.Fullname, emailLink, model.RegisterVerification)
+		if err != nil {
+			ar.Logger.Error("AuthRepositoryImpl.SendMailVerification constructEmailTemplate ERROR ", err)
+
+			return err
+		}
+
+		err = ar.sendMail(ar.Config.Mailer.Sender, []string{reqRegister.Email}, reqRegister.Email, "Registration Confirmations", "Please Complete the Verification of your Request Registration", result)
+		if err != nil {
+			ar.Logger.Error("AuthRepositoryImpl.SendMailVerification sendMail ERROR ", err)
+
+			return err
+		}
+
+		return nil
+	case model.ForgotPasswordVerification:
+		reqForgotPassRequest, ok := req.(*model.ForgotPasswordRequest)
+		if !ok {
+			ar.Logger.Error("AuthRepositoryImpl.SendMailVerification type assertion ERROR, ", model.NewError(model.Type, "failed to convert data"))
+
+			return model.NewError(model.Type, "failed to convert data")
+		}
+
+		err := ar.Redis.SetEx(ar.Context, fmt.Sprintf(model.VerificationKey, model.ForgotPasswordVerification, codeVerification), reqForgotPassRequest.Email, expiredCodeDuration).Err()
+		if err != nil {
+			ar.Logger.Error("AuthRepositoryImpl.SendMailVerification SetEx ERROR, ", err)
+
+			return err
+		}
+
+		emailLink := fmt.Sprintf("http://localhost:%d/v1/forgot-password/verify?code=%s&user_type=%s", ar.Config.Server.AppPort, codeVerification, reqForgotPassRequest.UserType)
+
+		result, err := ar.constructEmailTemplate("", emailLink, model.ForgotPasswordVerification)
+		if err != nil {
+			ar.Logger.Error("AuthRepositoryImpl.SendMailVerification constructEmailTemplate ERROR ", err)
+
+			return err
+		}
+
+		err = ar.sendMail(ar.Config.Mailer.Sender, []string{reqForgotPassRequest.Email}, reqForgotPassRequest.Email, "Forgot Password Confirmations", "Please Complete the Verification of your Request Forgot Password", result)
+		if err != nil {
+			ar.Logger.Error("AuthRepositoryImpl.SendMailVerification sendMail ERROR ", err)
+
+			return err
+		}
+
+		return nil
 	}
 
-	emailLink := fmt.Sprintf("http://localhost:%d/v1/register/verify?code=%s&user_type=%s", ar.Config.Server.AppPort, codeVerification, req.UserType)
-
-	result, err := ar.constructRegisterEmailTemplate(req, emailLink)
-	if err != nil {
-		return err
-	}
-
-	err = ar.sendMail(ar.Config.Mailer.Sender, []string{req.Email}, req.Email, "Registration Confirmations", "Please Complete the Verification of your Request Registration", result)
-	if err != nil {
-		ar.Logger.Error(err)
-
-		return err
-	}
-
-	return nil
+	return model.NewError(model.Validation, "invalid verification_type")
 }
 
 func (ar *AuthRepositoryImpl) GetVerificationByCode(ctx context.Context, code string, verificationType model.VerificationType) (string, error) {
@@ -108,7 +154,7 @@ func (ar *AuthRepositoryImpl) sendMail(from string, to []string, cc string, ccTi
 	return nil
 }
 
-func (ar *AuthRepositoryImpl) constructRegisterEmailTemplate(req *model.RegisterRequest, emailLink string) (string, error) {
+func (ar *AuthRepositoryImpl) constructEmailTemplate(userName string, emailLink string, verificationType model.VerificationType) (string, error) {
 	// Configure hermes by setting a theme and your product info
 	h := hermes.Hermes{
 		// Optional Theme
@@ -124,7 +170,7 @@ func (ar *AuthRepositoryImpl) constructRegisterEmailTemplate(req *model.Register
 
 	email := hermes.Email{
 		Body: hermes.Body{
-			Name: req.Fullname,
+			Name: userName,
 			Intros: []string{
 				"Selamat Datang di LezPay! Tinggal sedikit lagi nih kamu bisa menggunakan wallet nya",
 			},
@@ -142,6 +188,15 @@ func (ar *AuthRepositoryImpl) constructRegisterEmailTemplate(req *model.Register
 				"Butuh bantuan? balas email ini, akan kami bantu sebisa mungkin",
 			},
 		},
+	}
+
+	switch verificationType {
+	case model.RegisterVerification:
+	case model.ForgotPasswordVerification:
+		email.Body.Intros = append(email.Body.Intros[:0], email.Body.Intros[0+1:]...)
+
+		email.Body.Intros = append(email.Body.Intros, "Lupa kata sandimu? silahkan konfirmasi dengan menekan tombol konfirmasi untuk melanjutkan penggantian kata sandi")
+		email.Body.Actions[0].Instructions = "Konfirmasi ganti kata sandimu disini :"
 	}
 
 	result, err := h.GenerateHTML(email)
