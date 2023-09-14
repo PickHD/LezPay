@@ -64,7 +64,7 @@ func (mr *MerchantRepositoryImpl) CreateMerchant(req *model.CreateMerchantReques
 		SELECT 
 			email
 		FROM
-			Merchant
+			merchant
 		WHERE
 			email = $1
 	`
@@ -290,7 +290,7 @@ func (mr *MerchantRepositoryImpl) UpdateMerchantPasswordByEmail(req *model.Updat
 
 	sqlUpdate := `
 		UPDATE 
-			Merchant
+			merchant
 		SET
 			password = $1,
 			updated_at = $2
