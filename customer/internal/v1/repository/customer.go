@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/PickHD/LezPay/customer/internal/v1/config"
 	"github.com/PickHD/LezPay/customer/internal/v1/helper"
@@ -20,6 +21,7 @@ type (
 		UpdateVerifiedCustomer(email string) (bool, error)
 		GetCustomerIDByEmail(req *model.GetCustomerIDByEmailRequest) (int64, error)
 		GetCustomerDetailsByEmail(req *model.GetCustomerDetailsByEmailRequest) (*model.GetCustomerDetailsByEmailResponse, error)
+		UpdateCustomerPasswordByEmail(req *model.UpdateCustomerPasswordByEmailRequest) (*model.UpdateCustomerPasswordByEmailResponse, error)
 	}
 
 	// CustomerRepositoryImpl is an app customer struct that consists of all the dependencies needed for customer repository
@@ -201,12 +203,13 @@ func (cr *CustomerRepositoryImpl) UpdateVerifiedCustomer(email string) (bool, er
 		UPDATE 
 			customer
 		SET
-			is_verified = $1
+			is_verified = $1,
+			updated_at = $2
 		WHERE
-			email = $2
+			email = $3
 	`
 
-	_, err = tx.Exec(cr.Context, sqlUpdate, true, email)
+	_, err = tx.Exec(cr.Context, sqlUpdate, true, time.Now(), email)
 	if err != nil {
 		// do rollback tx
 		errRollback := tx.Rollback(cr.Context)
@@ -298,4 +301,55 @@ func (cr *CustomerRepositoryImpl) GetCustomerDetailsByEmail(req *model.GetCustom
 	}
 
 	return data, nil
+}
+
+func (cr *CustomerRepositoryImpl) UpdateCustomerPasswordByEmail(req *model.UpdateCustomerPasswordByEmailRequest) (*model.UpdateCustomerPasswordByEmailResponse, error) {
+	tr := cr.Tracer.Tracer("Customer-UpdateCustomerPasswordByEmail Repository")
+	_, span := tr.Start(cr.Context, "Start UpdateCustomerPasswordByEmail")
+	defer span.End()
+
+	// begin tx
+	tx, err := cr.DB.Begin(cr.Context)
+	if err != nil {
+		cr.Logger.Error("CustomerRepositoryImpl.UpdateCustomerPasswordByEmail DB.Begin ERROR", err)
+
+		return nil, err
+	}
+
+	sqlUpdate := `
+		UPDATE 
+			customer
+		SET
+			password = $1,
+			updated_at = $2
+		WHERE
+			email = $3
+	`
+
+	_, err = tx.Exec(cr.Context, sqlUpdate, req.Password, time.Now(), req.Email)
+	if err != nil {
+		// do rollback tx
+		errRollback := tx.Rollback(cr.Context)
+		if errRollback != nil {
+			cr.Logger.Error("CustomerRepositoryImpl.UpdateCustomerPasswordByEmail tx.Rollback ERROR", errRollback)
+
+			return nil, errRollback
+		}
+
+		cr.Logger.Error("CustomerRepositoryImpl.UpdateCustomerPasswordByEmail tx.Exec ERROR", err)
+
+		return nil, err
+	}
+
+	// do commit tx
+	err = tx.Commit(cr.Context)
+	if err != nil {
+		cr.Logger.Error("CustomerRepositoryImpl.UpdateCustomerPasswordByEmail tx.Commit ERROR", err)
+
+		return nil, err
+	}
+
+	return &model.UpdateCustomerPasswordByEmailResponse{
+		Email: req.Email,
+	}, nil
 }

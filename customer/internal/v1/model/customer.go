@@ -36,6 +36,7 @@ type (
 		Email string
 	}
 
+	// GetCustomerDetailsByEmailResponse consist data response getting customer details by email
 	GetCustomerDetailsByEmailResponse struct {
 		ID          int64
 		FullName    string
@@ -43,5 +44,16 @@ type (
 		PhoneNumber string
 		Password    string
 		Pin         string
+	}
+
+	// UpdateCustomerPasswordByEmailRequest consist request update password customer by email
+	UpdateCustomerPasswordByEmailRequest struct {
+		Email    string
+		Password string
+	}
+
+	// UpdateCustomerPasswordByEmailResponse consist data response updating password customer
+	UpdateCustomerPasswordByEmailResponse struct {
+		Email string
 	}
 )

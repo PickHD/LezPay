@@ -21,6 +21,7 @@ type (
 		UpdateVerifiedCustomer(ctx context.Context, req *customerpb.UpdateVerifiedCustomerRequest) (*customerpb.UpdateVerifiedCustomerResponse, error)
 		GetCustomerIDByEmail(ctx context.Context, req *customerpb.GetCustomerIDByEmailRequest) (*customerpb.GetCustomerIDByEmailResponse, error)
 		GetCustomerDetailsByEmail(ctx context.Context, req *customerpb.GetCustomerDetailsByEmailRequest) (*customerpb.GetCustomerDetailsByEmailResponse, error)
+		UpdateCustomerPasswordByEmail(ctx context.Context, req *customerpb.UpdateCustomerPasswordByEmailRequest) (*customerpb.UpdateCustomerPasswordByEmailResponse, error)
 	}
 
 	// CustomerControllerImpl is an app customer struct that consists of all the dependencies needed for customer controller
@@ -126,5 +127,25 @@ func (cc *CustomerControllerImpl) GetCustomerDetailsByEmail(ctx context.Context,
 		PhoneNumber: data.PhoneNumber,
 		Password:    data.Password,
 		Pin:         data.Pin,
+	}, nil
+}
+
+func (cc *CustomerControllerImpl) UpdateCustomerPasswordByEmail(ctx context.Context, req *customerpb.UpdateCustomerPasswordByEmailRequest) (*customerpb.UpdateCustomerPasswordByEmailResponse, error) {
+	tr := cc.Tracer.Tracer("Customer-UpdateCustomerPasswordByEmail Controller")
+	_, span := tr.Start(ctx, "Start UpdateCustomerPasswordByEmail")
+	defer span.End()
+
+	updatePasswordReq := model.UpdateCustomerPasswordByEmailRequest{
+		Email:    req.GetEmail(),
+		Password: req.GetPassword(),
+	}
+
+	data, err := cc.CustomerSvc.UpdateCustomerPasswordByEmail(&updatePasswordReq)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed Update Password %s", err.Error())
+	}
+
+	return &customerpb.UpdateCustomerPasswordByEmailResponse{
+		Email: data.Email,
 	}, nil
 }
