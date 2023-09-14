@@ -8,6 +8,7 @@ service MerchantService {
     rpc CreateMerchant (MerchantRequest) returns (MerchantResponse);
     rpc UpdateVerifiedMerchant (UpdateVerifiedMerchantRequest) returns (UpdateVerifiedMerchantResponse);
     rpc GetMerchantDetailsByEmail (GetMerchantDetailsByEmailRequest) returns (GetMerchantDetailsByEmailResponse);
+    rpc UpdateMerchantPasswordByEmail(UpdateMerchantPasswordByEmailRequest) returns (UpdateMerchantPasswordByEmailResponse);
 }
 
 message MerchantRequest {
@@ -41,4 +42,13 @@ message GetMerchantDetailsByEmailResponse {
     string email = 3;
     string phone_number = 4;
     string password = 5;
+}
+
+message UpdateMerchantPasswordByEmailRequest {
+    string email = 1;
+    string password = 2;
+}
+
+message UpdateMerchantPasswordByEmailResponse {
+    string email = 1;
 }

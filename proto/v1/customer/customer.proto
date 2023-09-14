@@ -9,6 +9,7 @@ service CustomerService {
     rpc UpdateVerifiedCustomer (UpdateVerifiedCustomerRequest) returns (UpdateVerifiedCustomerResponse);
     rpc GetCustomerIDByEmail (GetCustomerIDByEmailRequest) returns (GetCustomerIDByEmailResponse);
     rpc GetCustomerDetailsByEmail (GetCustomerDetailsByEmailRequest) returns (GetCustomerDetailsByEmailResponse);
+    rpc UpdateCustomerPasswordByEmail(UpdateCustomerPasswordByEmailRequest) returns (UpdateCustomerPasswordByEmailResponse);
 }
 
 message CustomerRequest {
@@ -51,4 +52,13 @@ message GetCustomerDetailsByEmailResponse {
     string phone_number = 4;
     string password = 5;
     string pin = 6;
+}
+
+message UpdateCustomerPasswordByEmailRequest {
+    string email = 1;
+    string password = 2;
+}
+
+message UpdateCustomerPasswordByEmailResponse {
+    string email = 1;
 }
