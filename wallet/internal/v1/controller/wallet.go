@@ -6,6 +6,7 @@ import (
 	"github.com/PickHD/LezPay/wallet/internal/v1/config"
 	"github.com/PickHD/LezPay/wallet/internal/v1/model"
 	"github.com/PickHD/LezPay/wallet/internal/v1/service"
+	"github.com/labstack/echo/v4"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,6 +19,7 @@ type (
 	WalletController interface {
 		CreateWallet(ctx context.Context, req *walletpb.WalletRequest) (*walletpb.WalletResponse, error)
 		GetCustomerWallet(ctx context.Context, req *walletpb.GetCustomerWalletRequest) (*walletpb.GetCustomerWalletResponse, error)
+		HandleCustomerTopupNotification(ctx echo.Context) error
 	}
 
 	// WalletControllerImpl is an app Wallet struct that consists of all the dependencies needed for Wallet controller
@@ -73,4 +75,8 @@ func (wc *WalletControllerImpl) GetCustomerWallet(ctx context.Context, req *wall
 		Id:      data.ID,
 		Balance: data.Balance,
 	}, nil
+}
+
+func (wc *WalletControllerImpl) HandleCustomerTopupNotification(ctx echo.Context) error {
+	return nil
 }
