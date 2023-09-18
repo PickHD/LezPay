@@ -13,6 +13,7 @@ type (
 	// WalletService is an interface that has all the function to be implemented inside wallet service
 	WalletService interface {
 		CreateWallet(req *model.CreateWalletRequest) (*model.CreateWalletResponse, error)
+		GetCustomerWalletByCustomerID(customerID uint64) (*model.Wallet, error)
 	}
 
 	// WalletServiceImpl is an app wallet struct that consists of all the dependencies needed for Wallet service
@@ -47,4 +48,17 @@ func (ws *WalletServiceImpl) CreateWallet(req *model.CreateWalletRequest) (*mode
 	return &model.CreateWalletResponse{
 		ID: uint64(Id),
 	}, nil
+}
+
+func (ws *WalletServiceImpl) GetCustomerWalletByCustomerID(customerID uint64) (*model.Wallet, error) {
+	tr := ws.Tracer.Tracer("Wallet-GetCustomerWalletByCustomerID Service")
+	_, span := tr.Start(ws.Context, "Start GetCustomerWalletByCustomerID")
+	defer span.End()
+
+	data, err := ws.WalletRepo.GetCustomerWalletByCustomerID(customerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }

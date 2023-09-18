@@ -17,6 +17,7 @@ type (
 	// WalletController is an interface that has all the function to be implemented inside Wallet controller
 	WalletController interface {
 		CreateWallet(ctx context.Context, req *walletpb.WalletRequest) (*walletpb.WalletResponse, error)
+		GetCustomerWallet(ctx context.Context, req *walletpb.GetCustomerWalletRequest) (*walletpb.GetCustomerWalletResponse, error)
 	}
 
 	// WalletControllerImpl is an app Wallet struct that consists of all the dependencies needed for Wallet controller
@@ -55,5 +56,21 @@ func (wc *WalletControllerImpl) CreateWallet(ctx context.Context, req *walletpb.
 
 	return &walletpb.WalletResponse{
 		Id: data.ID,
+	}, nil
+}
+
+func (wc *WalletControllerImpl) GetCustomerWallet(ctx context.Context, req *walletpb.GetCustomerWalletRequest) (*walletpb.GetCustomerWalletResponse, error) {
+	tr := wc.Tracer.Tracer("Wallet-GetCustomerWallet Controller")
+	_, span := tr.Start(ctx, "Start GetCustomerWallet")
+	defer span.End()
+
+	data, err := wc.WalletSvc.GetCustomerWalletByCustomerID(req.GetCustomerId())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed Get Customer Wallet %s", err.Error())
+	}
+
+	return &walletpb.GetCustomerWalletResponse{
+		Id:      data.ID,
+		Balance: data.Balance,
 	}, nil
 }

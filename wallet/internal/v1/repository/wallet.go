@@ -16,6 +16,7 @@ type (
 	// WalletRepository is an interface that has all the function to be implemented inside wallet repository
 	WalletRepository interface {
 		CreateWallet(req *model.CreateWalletRequest) (int64, error)
+		GetCustomerWalletByCustomerID(customerID uint64) (*model.Wallet, error)
 	}
 
 	// WalletRepositoryImpl is an app Wallet struct that consists of all the dependencies needed for wallet repository
@@ -100,4 +101,33 @@ func (wr *WalletRepositoryImpl) CreateWallet(req *model.CreateWalletRequest) (in
 	}
 
 	return id, nil
+}
+
+func (wr *WalletRepositoryImpl) GetCustomerWalletByCustomerID(customerID uint64) (*model.Wallet, error) {
+	tr := wr.Tracer.Tracer("Wallet-GetCustomerWalletByCustomerID Repository")
+	_, span := tr.Start(wr.Context, "Start GetCustomerWalletByCustomerID")
+	defer span.End()
+
+	sql := `
+		SELECT
+			id,
+			customer_id,
+			balance
+		FROM 
+			wallet
+		WHERE
+			customer_id = $1
+	`
+
+	row := wr.DB.QueryRow(wr.Context, sql, customerID)
+
+	data := model.Wallet{}
+	err := row.Scan(&data.ID, &data.CustomerID, &data.Balance)
+	if err != nil {
+		wr.Logger.Error("WalletRepositoryImpl.GetCustomerWalletByCustomerID row.Scan ERROR ", err)
+
+		return nil, err
+	}
+
+	return &data, nil
 }
