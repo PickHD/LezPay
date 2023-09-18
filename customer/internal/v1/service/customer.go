@@ -7,6 +7,8 @@ import (
 	"github.com/PickHD/LezPay/customer/internal/v1/model"
 	"github.com/PickHD/LezPay/customer/internal/v1/repository"
 	"go.opentelemetry.io/otel/sdk/trace"
+
+	walletpb "github.com/PickHD/LezPay/customer/pkg/proto/v1/wallet"
 )
 
 type (
@@ -17,24 +19,27 @@ type (
 		GetCustomerIDByEmail(req *model.GetCustomerIDByEmailRequest) (*model.GetCustomerIDByEmailResponse, error)
 		GetCustomerDetailsByEmail(req *model.GetCustomerDetailsByEmailRequest) (*model.GetCustomerDetailsByEmailResponse, error)
 		UpdateCustomerPasswordByEmail(req *model.UpdateCustomerPasswordByEmailRequest) (*model.UpdateCustomerPasswordByEmailResponse, error)
+		GetCustomerDashboard(customerID uint64) (*model.GetCustomerDashboardResponse, error)
 	}
 
 	// CustomerServiceImpl is an app customer struct that consists of all the dependencies needed for customer service
 	CustomerServiceImpl struct {
-		Context      context.Context
-		Config       *config.Configuration
-		Tracer       *trace.TracerProvider
-		CustomerRepo repository.CustomerRepository
+		Context       context.Context
+		Config        *config.Configuration
+		Tracer        *trace.TracerProvider
+		CustomerRepo  repository.CustomerRepository
+		WalletClients walletpb.WalletServiceClient
 	}
 )
 
 // NewCustomerService return new instances customer service
-func NewCustomerService(ctx context.Context, config *config.Configuration, tracer *trace.TracerProvider, customerRepo repository.CustomerRepository) *CustomerServiceImpl {
+func NewCustomerService(ctx context.Context, config *config.Configuration, tracer *trace.TracerProvider, customerRepo repository.CustomerRepository, walletClient walletpb.WalletServiceClient) *CustomerServiceImpl {
 	return &CustomerServiceImpl{
-		Context:      ctx,
-		Config:       config,
-		Tracer:       tracer,
-		CustomerRepo: customerRepo,
+		Context:       ctx,
+		Config:        config,
+		Tracer:        tracer,
+		CustomerRepo:  customerRepo,
+		WalletClients: walletClient,
 	}
 }
 
@@ -115,4 +120,17 @@ func (cs *CustomerServiceImpl) UpdateCustomerPasswordByEmail(req *model.UpdateCu
 	}
 
 	return data, nil
+}
+
+func (cs *CustomerServiceImpl) GetCustomerDashboard(customerID uint64) (*model.GetCustomerDashboardResponse, error) {
+	data, err := cs.WalletClients.GetCustomerWallet(cs.Context, &walletpb.GetCustomerWalletRequest{
+		CustomerId: customerID})
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.GetCustomerDashboardResponse{
+		WalletID: data.GetId(),
+		Balance:  data.GetBalance(),
+	}, nil
 }

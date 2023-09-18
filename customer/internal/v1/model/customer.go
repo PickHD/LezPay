@@ -56,4 +56,10 @@ type (
 	UpdateCustomerPasswordByEmailResponse struct {
 		Email string
 	}
+
+	// GetCustomerDashboardResponse consist data response get customer dashboard
+	GetCustomerDashboardResponse struct {
+		WalletID uint64 `json:"wallet_id"`
+		Balance  int64  `json:"balance"`
+	}
 )

@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // App..
@@ -35,6 +36,7 @@ type App struct {
 	KafkaProducer *kafka.Writer
 	GRPC          *grpc.Server
 	Tracer        *trace.TracerProvider
+	WalletGRPC    *grpc.ClientConn
 }
 
 // SetupApplication configuring dependencies app needed
@@ -88,6 +90,17 @@ func SetupApplication(ctx context.Context) (*App, error) {
 	app.KafkaProducer = initProducer(app.Config)
 
 	app.GRPC = grpc.NewServer()
+
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	app.WalletGRPC, err = grpc.Dial(app.Config.Service.GRPCWalletHost, opts...)
+	if err != nil {
+		app.Logger.Error("failed Dial WalletGRPC, error :", err)
+		return app, err
+	}
+
 	app.Application = fiber.New()
 	app.Application.Use(cors.New(cors.Config{
 		AllowOrigins: "*",

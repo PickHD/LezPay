@@ -5,8 +5,11 @@ import (
 	"strings"
 
 	"github.com/PickHD/LezPay/customer/internal/v1/config"
+	"github.com/PickHD/LezPay/customer/internal/v1/helper"
+	"github.com/PickHD/LezPay/customer/internal/v1/middleware"
 	"github.com/PickHD/LezPay/customer/internal/v1/model"
 	"github.com/PickHD/LezPay/customer/internal/v1/service"
+	"github.com/gofiber/fiber/v2"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,11 +20,15 @@ import (
 type (
 	// CustomerController is an interface that has all the function to be implemented inside customer controller
 	CustomerController interface {
+		// GRPC
 		CreateCustomer(ctx context.Context, req *customerpb.CustomerRequest) (*customerpb.CustomerResponse, error)
 		UpdateVerifiedCustomer(ctx context.Context, req *customerpb.UpdateVerifiedCustomerRequest) (*customerpb.UpdateVerifiedCustomerResponse, error)
 		GetCustomerIDByEmail(ctx context.Context, req *customerpb.GetCustomerIDByEmailRequest) (*customerpb.GetCustomerIDByEmailResponse, error)
 		GetCustomerDetailsByEmail(ctx context.Context, req *customerpb.GetCustomerDetailsByEmailRequest) (*customerpb.GetCustomerDetailsByEmailResponse, error)
 		UpdateCustomerPasswordByEmail(ctx context.Context, req *customerpb.UpdateCustomerPasswordByEmailRequest) (*customerpb.UpdateCustomerPasswordByEmailResponse, error)
+
+		// REST API
+		GetCustomerDashboard(ctx *fiber.Ctx) error
 	}
 
 	// CustomerControllerImpl is an app customer struct that consists of all the dependencies needed for customer controller
@@ -148,4 +155,33 @@ func (cc *CustomerControllerImpl) UpdateCustomerPasswordByEmail(ctx context.Cont
 	return &customerpb.UpdateCustomerPasswordByEmailResponse{
 		Email: data.Email,
 	}, nil
+}
+
+// Check godoc
+// @Summary      Get Customer Dashboard
+// @Tags         Customer
+// @Accept       json
+// @Produce      json
+// @Param        Authorization header string true "Authorization Bearer <Place Access Token Here>"
+// @Success      200  {object}  helper.BaseResponse
+// @Failure      404  {object}  helper.BaseResponse
+// @Failure      500  {object}  helper.BaseResponse
+// @Router       /dashboard [get]
+func (cc *CustomerControllerImpl) GetCustomerDashboard(ctx *fiber.Ctx) error {
+	tr := cc.Tracer.Tracer("Customer-GetCustomerDashboard Controller")
+	_, span := tr.Start(cc.Context, "Start GetCustomerDashboard")
+	defer span.End()
+
+	data := ctx.Locals(model.KeyJWTValidAccess)
+	decodedData, err := middleware.Extract(data)
+	if err != nil {
+		return helper.NewResponses[any](ctx, fiber.StatusInternalServerError, err.Error(), nil, err, nil)
+	}
+
+	result, err := cc.CustomerSvc.GetCustomerDashboard(decodedData.UserID)
+	if err != nil {
+		return helper.NewResponses[any](ctx, fiber.StatusInternalServerError, "Failed get Dashboard", nil, err, nil)
+	}
+
+	return helper.NewResponses[any](ctx, fiber.StatusOK, "Success get Dashboard", result, nil, nil)
 }
