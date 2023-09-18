@@ -11,6 +11,7 @@ type (
 		Redis    *Redis
 		Tracer   *Tracer
 		Kafka    *Kafka
+		Service  *Service
 	}
 
 	Common struct {
@@ -55,6 +56,10 @@ type (
 		RequiredAcks           int
 		GroupID                string
 	}
+
+	Service struct {
+		GRPCWalletHost string
+	}
 )
 
 func loadConfiguration() *Configuration {
@@ -94,6 +99,9 @@ func loadConfiguration() *Configuration {
 			TopicPayoutTransaction: helper.GetEnvString("KAFKA_TOPIC_PAYOUT_TRANSACTION"),
 			RequiredAcks:           helper.GetEnvInt("KAFKA_REQUIRED_ACKS"),
 			GroupID:                helper.GetEnvString("KAFKA_GROUP_ID"),
+		},
+		Service: &Service{
+			GRPCWalletHost: helper.GetEnvString("GRPC_WALLET_HOST"),
 		},
 	}
 }
