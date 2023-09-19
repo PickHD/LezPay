@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS transaction (
     payment_channel_id BIGINT NULL,
     ref_id VARCHAR NULL,
     amount INT NOT NULL,
+    transaction_details JSONB NULL,
     status transaction_status NOT NULL,
     type transaction_type NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
