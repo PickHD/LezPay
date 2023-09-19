@@ -25,6 +25,8 @@ func setupRouter(app *application.App) {
 
 		v1.GET("/health-check", dep.HealthCheckController.Check)
 
+		v1.GET("/payment-channel", dep.PaymentChannelController.GetActiveList)
+
 		v1.POST("/notification", dep.WalletController.HandleCustomerTopupNotification)
 	}
 }
