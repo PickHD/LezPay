@@ -19,6 +19,7 @@ func register(app *application.App) *grpc.Server {
 	reflection.Register(app.GRPC)
 
 	walletpb.RegisterWalletServiceServer(app.GRPC, dep.WalletController)
+	walletpb.RegisterTransactionServiceServer(app.GRPC, dep.TransactionController)
 
 	return app.GRPC
 }

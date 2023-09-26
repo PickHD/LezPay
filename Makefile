@@ -5,9 +5,13 @@ ifneq (,$(wildcard ./auth/cmd/v1/.env))
 	DATABASE_URL = postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)
 endif
 
-# Run & Build entire services 
+# Run & Build entire services in production
 run:
 	docker compose up -d --build --force-recreate
+
+# Run & Build entire services in development
+run-local:
+	docker compose up -d --build --force-recreate && ngrok http https://localhost
 	
 # Stop entire services
 stop:
@@ -33,4 +37,4 @@ migrate-create:
 lint:
 	golangci-lint run
 	
-.PHONY: run stop remove
+.PHONY: run stop remove run-local

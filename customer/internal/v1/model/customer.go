@@ -62,4 +62,16 @@ type (
 		WalletID uint64 `json:"wallet_id"`
 		Balance  int64  `json:"balance"`
 	}
+
+	// TopupWalletCustomerRequest consist request topup wallet customer
+	TopupWalletCustomerRequest struct {
+		Amount           int64  `json:"amount"`
+		PaymentChannelID uint64 `json:"payment_channel_id"`
+	}
+
+	// TopupWalletCustomerResponse consist data response topup wallet customer
+	TopupWalletCustomerResponse struct {
+		TransactionID uint64 `json:"transaction_id"`
+		Status        string `json:"status"`
+	}
 )

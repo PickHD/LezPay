@@ -20,26 +20,29 @@ type (
 		GetCustomerDetailsByEmail(req *model.GetCustomerDetailsByEmailRequest) (*model.GetCustomerDetailsByEmailResponse, error)
 		UpdateCustomerPasswordByEmail(req *model.UpdateCustomerPasswordByEmailRequest) (*model.UpdateCustomerPasswordByEmailResponse, error)
 		GetCustomerDashboard(customerID uint64) (*model.GetCustomerDashboardResponse, error)
+		TopupWalletCustomer(customerID uint64, req *model.TopupWalletCustomerRequest) (*model.TopupWalletCustomerResponse, error)
 	}
 
 	// CustomerServiceImpl is an app customer struct that consists of all the dependencies needed for customer service
 	CustomerServiceImpl struct {
-		Context       context.Context
-		Config        *config.Configuration
-		Tracer        *trace.TracerProvider
-		CustomerRepo  repository.CustomerRepository
-		WalletClients walletpb.WalletServiceClient
+		Context          context.Context
+		Config           *config.Configuration
+		Tracer           *trace.TracerProvider
+		CustomerRepo     repository.CustomerRepository
+		WalletClients    walletpb.WalletServiceClient
+		WalletTrxClients walletpb.TransactionServiceClient
 	}
 )
 
 // NewCustomerService return new instances customer service
-func NewCustomerService(ctx context.Context, config *config.Configuration, tracer *trace.TracerProvider, customerRepo repository.CustomerRepository, walletClient walletpb.WalletServiceClient) *CustomerServiceImpl {
+func NewCustomerService(ctx context.Context, config *config.Configuration, tracer *trace.TracerProvider, customerRepo repository.CustomerRepository, walletClient walletpb.WalletServiceClient, walletTrxClient walletpb.TransactionServiceClient) *CustomerServiceImpl {
 	return &CustomerServiceImpl{
-		Context:       ctx,
-		Config:        config,
-		Tracer:        tracer,
-		CustomerRepo:  customerRepo,
-		WalletClients: walletClient,
+		Context:          ctx,
+		Config:           config,
+		Tracer:           tracer,
+		CustomerRepo:     customerRepo,
+		WalletClients:    walletClient,
+		WalletTrxClients: walletTrxClient,
 	}
 }
 
@@ -123,6 +126,10 @@ func (cs *CustomerServiceImpl) UpdateCustomerPasswordByEmail(req *model.UpdateCu
 }
 
 func (cs *CustomerServiceImpl) GetCustomerDashboard(customerID uint64) (*model.GetCustomerDashboardResponse, error) {
+	tr := cs.Tracer.Tracer("Customer-GetCustomerDashboard Service")
+	_, span := tr.Start(cs.Context, "Start GetCustomerDashboard")
+	defer span.End()
+
 	data, err := cs.WalletClients.GetCustomerWallet(cs.Context, &walletpb.GetCustomerWalletRequest{
 		CustomerId: customerID})
 	if err != nil {
@@ -133,4 +140,66 @@ func (cs *CustomerServiceImpl) GetCustomerDashboard(customerID uint64) (*model.G
 		WalletID: data.GetId(),
 		Balance:  data.GetBalance(),
 	}, nil
+}
+
+func (cs *CustomerServiceImpl) TopupWalletCustomer(customerID uint64, req *model.TopupWalletCustomerRequest) (*model.TopupWalletCustomerResponse, error) {
+	/*
+		TODO:
+		1. validate topup request x
+		2. implement grpc & call grpc to create topup transaction with status pending, return transaction_id x
+		3. construct proto message TopupTransactionMessage with payload : transaction_id,customer_id,amount,payment_channel_id,EventName (PaymentRequested)
+		4. create repo ProduceTopupTransaction : convert proto message to byte and send data to kafka topic (topup-transaction)
+		5. return response transaction_id with status pending
+	*/
+	tr := cs.Tracer.Tracer("Customer-TopupWalletCustomer Service")
+	_, span := tr.Start(cs.Context, "Start TopupWalletCustomer")
+	defer span.End()
+
+	err := cs.validateTopupWalletCustomerRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := cs.WalletTrxClients.CreateTransaction(cs.Context, &walletpb.CreateTransactionRequest{
+		CustomerId:       customerID,
+		Amount:           req.Amount,
+		PaymentChannelId: req.PaymentChannelID,
+		TypeTransaction:  string(model.TopupTransaction),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = cs.CustomerRepo.ProduceCustomerTopupTransaction(
+		cs.prepareTopupTransactionMessage(customerID, data.GetTransactionId(), req))
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.TopupWalletCustomerResponse{
+		TransactionID: data.GetTransactionId(),
+		Status:        data.GetStatus(),
+	}, nil
+}
+
+func (cs *CustomerServiceImpl) validateTopupWalletCustomerRequest(req *model.TopupWalletCustomerRequest) error {
+	if req.Amount < 1 && req.Amount > 10000000 {
+		return model.NewError(model.Validation, "amount cant be less than 0 & amount cant be more than 10mio")
+	}
+
+	if req.PaymentChannelID < 1 {
+		return model.NewError(model.Validation, "payment_channel_id cant be less than 0")
+	}
+
+	return nil
+}
+
+func (cs *CustomerServiceImpl) prepareTopupTransactionMessage(customerID, transactionID uint64, req *model.TopupWalletCustomerRequest) *walletpb.TopupTransactionMessage {
+	return &walletpb.TopupTransactionMessage{
+		TransactionId:    transactionID,
+		CustomerId:       customerID,
+		Amount:           req.Amount,
+		PaymentChannelId: req.PaymentChannelID,
+		EventName:        string(model.EventPaymentRequested),
+	}
 }
