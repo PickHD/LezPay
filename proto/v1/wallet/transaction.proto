@@ -1,0 +1,29 @@
+syntax= "proto3";
+
+package proto.v1.wallet;
+
+option go_package = "./";
+
+service TransactionService {
+    rpc CreateTransaction(CreateTransactionRequest) returns (CreateTransactionResponse);
+}
+
+message CreateTransactionRequest {
+    uint64 customer_id = 1;
+    int64 amount = 2;
+    uint64 payment_channel_id = 3;
+    string type_transaction = 4;
+}
+
+message CreateTransactionResponse {
+    uint64 transaction_id = 1;
+    string status = 2;
+}
+
+message TopupTransactionMessage {
+    uint64 transaction_id = 1;
+    uint64 customer_id = 2;
+    int64 amount = 3;
+    uint64 payment_channel_id = 4;
+    string EventName = 5;
+}
