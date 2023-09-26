@@ -91,6 +91,58 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/topup": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Topup"
+                ],
+                "summary": "Topup Wallet Customer",
+                "parameters": [
+                    {
+                        "description": "topup wallet customer",
+                        "name": "topup",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.TopupWalletCustomerRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorization Bearer \u003cPlace Access Token Here\u003e",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helper.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/helper.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/helper.BaseResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -117,6 +169,17 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "total_page": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.TopupWalletCustomerRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "payment_channel_id": {
                     "type": "integer"
                 }
             }

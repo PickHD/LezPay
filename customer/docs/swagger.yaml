@@ -18,6 +18,13 @@ definitions:
       total_page:
         type: integer
     type: object
+  model.TopupWalletCustomerRequest:
+    properties:
+      amount:
+        type: integer
+      payment_channel_id:
+        type: integer
+    type: object
 host: localhost:8081
 info:
   contact:
@@ -75,6 +82,40 @@ paths:
       summary: Checking Health Services
       tags:
       - Health Check
+  /topup:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: topup wallet customer
+        in: body
+        name: topup
+        required: true
+        schema:
+          $ref: '#/definitions/model.TopupWalletCustomerRequest'
+      - description: Authorization Bearer <Place Access Token Here>
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helper.BaseResponse'
+      summary: Topup Wallet Customer
+      tags:
+      - Topup
 schemes:
 - http
 swagger: "2.0"
