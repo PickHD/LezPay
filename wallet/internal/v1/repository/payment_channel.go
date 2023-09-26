@@ -15,6 +15,7 @@ type (
 	// PaymentChannelRepository is an interface that has all the function to be implemented inside payment channel repository
 	PaymentChannelRepository interface {
 		GetActiveList(ctx context.Context) (*[]model.PaymentChannel, error)
+		GetByID(ctx context.Context, id int64) (*model.PaymentChannel, error)
 	}
 
 	// PaymentChannelRepositoryImpl is an app payment channel struct that consists of all the dependencies needed for payment channel repository
@@ -88,4 +89,45 @@ func (pr *PaymentChannelRepositoryImpl) GetActiveList(ctx context.Context) (*[]m
 	defer rows.Close()
 
 	return &paymentChannels, nil
+}
+
+func (pr *PaymentChannelRepositoryImpl) GetByID(ctx context.Context, id int64) (*model.PaymentChannel, error) {
+	tr := pr.Tracer.Tracer("Wallet-GetByID Repository")
+	_, span := tr.Start(ctx, "Start GetByID")
+	defer span.End()
+
+	sql := `
+		SELECT
+			id,
+			name,
+			code,
+			image_url,
+			COALESCE(payment_instruction,'') AS payment_instruction,
+			status
+		FROM
+			payment_channel
+		WHERE
+			id = $1
+		AND
+			status = 'ACTIVE'
+	`
+
+	paymentChannel := model.PaymentChannel{}
+
+	row := pr.DB.QueryRow(ctx, sql, id)
+	err := row.Scan(
+		&paymentChannel.ID,
+		&paymentChannel.Name,
+		&paymentChannel.Code,
+		&paymentChannel.ImageURL,
+		&paymentChannel.PaymentInstruction,
+		&paymentChannel.Status,
+	)
+	if err != nil {
+		pr.Logger.Error("PaymentChannelRepositoryImpl.GetByID rows.Scan ERROR ", err)
+
+		return nil, err
+	}
+
+	return &paymentChannel, nil
 }

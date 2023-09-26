@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/bwmarrin/snowflake v0.3.0
+	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v4 v4.11.1
@@ -15,6 +16,15 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.17.0
 	go.opentelemetry.io/otel/sdk v1.17.0
 	google.golang.org/grpc v1.58.0
+)
+
+require (
+	github.com/cockroachdb/apd v1.1.0 // indirect
+	github.com/gofrs/uuid v4.4.0+incompatible // indirect
+	github.com/jackc/fake v0.0.0-20150926172116-812a484cc733 // indirect
+	github.com/lib/pq v1.10.9 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 )
 
 require (
