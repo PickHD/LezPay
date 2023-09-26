@@ -10,8 +10,12 @@ import (
 	"github.com/jackc/pgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/protobuf/proto"
+
+	walletpb "github.com/PickHD/LezPay/customer/pkg/proto/v1/wallet"
 )
 
 type (
@@ -22,28 +26,31 @@ type (
 		GetCustomerIDByEmail(req *model.GetCustomerIDByEmailRequest) (int64, error)
 		GetCustomerDetailsByEmail(req *model.GetCustomerDetailsByEmailRequest) (*model.GetCustomerDetailsByEmailResponse, error)
 		UpdateCustomerPasswordByEmail(req *model.UpdateCustomerPasswordByEmailRequest) (*model.UpdateCustomerPasswordByEmailResponse, error)
+		ProduceCustomerTopupTransaction(msg *walletpb.TopupTransactionMessage) error
 	}
 
 	// CustomerRepositoryImpl is an app customer struct that consists of all the dependencies needed for customer repository
 	CustomerRepositoryImpl struct {
-		Context context.Context
-		Config  *config.Configuration
-		Logger  *logrus.Logger
-		Tracer  *trace.TracerProvider
-		DB      *pgxpool.Pool
-		Redis   *redis.Client
+		Context       context.Context
+		Config        *config.Configuration
+		Logger        *logrus.Logger
+		Tracer        *trace.TracerProvider
+		DB            *pgxpool.Pool
+		Redis         *redis.Client
+		KafkaProducer *kafka.Writer
 	}
 )
 
 // NewCustomerRepository return new instances customer repository
-func NewCustomerRepository(ctx context.Context, config *config.Configuration, logger *logrus.Logger, tracer *trace.TracerProvider, db *pgxpool.Pool, rds *redis.Client) *CustomerRepositoryImpl {
+func NewCustomerRepository(ctx context.Context, config *config.Configuration, logger *logrus.Logger, tracer *trace.TracerProvider, db *pgxpool.Pool, rds *redis.Client, kafkaProducer *kafka.Writer) *CustomerRepositoryImpl {
 	return &CustomerRepositoryImpl{
-		Context: ctx,
-		Config:  config,
-		Logger:  logger,
-		Tracer:  tracer,
-		DB:      db,
-		Redis:   rds,
+		Context:       ctx,
+		Config:        config,
+		Logger:        logger,
+		Tracer:        tracer,
+		DB:            db,
+		Redis:         rds,
+		KafkaProducer: kafkaProducer,
 	}
 }
 
@@ -352,4 +359,38 @@ func (cr *CustomerRepositoryImpl) UpdateCustomerPasswordByEmail(req *model.Updat
 	return &model.UpdateCustomerPasswordByEmailResponse{
 		Email: req.Email,
 	}, nil
+}
+
+func (cr *CustomerRepositoryImpl) ProduceCustomerTopupTransaction(msg *walletpb.TopupTransactionMessage) error {
+	tr := cr.Tracer.Tracer("Customer-ProduceCustomerTopupTransaction Repository")
+	_, span := tr.Start(cr.Context, "Start ProduceCustomerTopupTransaction")
+	defer span.End()
+
+	b, err := proto.Marshal(msg)
+	if err != nil {
+		cr.Logger.Error("CustomerRepositoryImpl.ProduceCustomerTopupTransaction Marshal proto TopupTransactionMessage ERROR, ", err)
+		return err
+	}
+
+	key, err := helper.GenerateByteSnowflakeID()
+	if err != nil {
+		cr.Logger.Error("CustomerRepositoryImpl.ProduceCustomerTopupTransaction GenerateByteSnowflakeID ERROR, ", err)
+		return err
+	}
+
+	err = cr.KafkaProducer.WriteMessages(cr.Context,
+		kafka.Message{
+			Key:   key,
+			Value: b,
+			Topic: cr.Config.Kafka.TopicTopupTransaction,
+		},
+	)
+	if err != nil {
+		cr.Logger.Error("CustomerRepositoryImpl.ProduceCustomerTopupTransaction KafkaProducer.WriteMessages ERROR, ", err)
+		return err
+	}
+
+	defer cr.KafkaProducer.Close()
+
+	return nil
 }

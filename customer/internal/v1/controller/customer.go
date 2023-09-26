@@ -29,6 +29,7 @@ type (
 
 		// REST API
 		GetCustomerDashboard(ctx *fiber.Ctx) error
+		TopupWalletCustomer(ctx *fiber.Ctx) error
 	}
 
 	// CustomerControllerImpl is an app customer struct that consists of all the dependencies needed for customer controller
@@ -184,4 +185,44 @@ func (cc *CustomerControllerImpl) GetCustomerDashboard(ctx *fiber.Ctx) error {
 	}
 
 	return helper.NewResponses[any](ctx, fiber.StatusOK, "Success get Dashboard", result, nil, nil)
+}
+
+// Check godoc
+// @Summary      Topup Wallet Customer
+// @Tags         Topup
+// @Accept       json
+// @Produce      json
+// @Param        topup body model.TopupWalletCustomerRequest true "topup wallet customer"
+// @Param        Authorization header string true "Authorization Bearer <Place Access Token Here>"
+// @Success      200  {object}  helper.BaseResponse
+// @Failure      400  {object}  helper.BaseResponse
+// @Failure      500  {object}  helper.BaseResponse
+// @Router       /topup [post]
+func (cc *CustomerControllerImpl) TopupWalletCustomer(ctx *fiber.Ctx) error {
+	var req model.TopupWalletCustomerRequest
+
+	tr := cc.Tracer.Tracer("Customer-TopupWalletCustomer Controller")
+	_, span := tr.Start(cc.Context, "Start TopupWalletCustomer")
+	defer span.End()
+
+	data := ctx.Locals(model.KeyJWTValidAccess)
+	decodedData, err := middleware.Extract(data)
+	if err != nil {
+		return helper.NewResponses[any](ctx, fiber.StatusInternalServerError, err.Error(), nil, err, nil)
+	}
+
+	if err := ctx.BodyParser(&req); err != nil {
+		return helper.NewResponses[any](ctx, fiber.StatusBadRequest, "Invalid request", nil, err, nil)
+	}
+
+	result, err := cc.CustomerSvc.TopupWalletCustomer(decodedData.UserID, &req)
+	if err != nil {
+		if strings.Contains(err.Error(), string(model.Validation)) {
+			return helper.NewResponses[any](ctx, fiber.StatusBadRequest, err.Error(), nil, err, nil)
+		}
+
+		return helper.NewResponses[any](ctx, fiber.StatusInternalServerError, "Failed Topup", nil, err, nil)
+	}
+
+	return helper.NewResponses[any](ctx, fiber.StatusOK, "Success Topup", result, nil, nil)
 }

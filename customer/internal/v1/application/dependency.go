@@ -15,14 +15,15 @@ type Dependency struct {
 
 func SetupDependencyInjection(app *App) *Dependency {
 	walletServiceClient := walletpb.NewWalletServiceClient(app.WalletGRPC)
+	walletTrxServiceClient := walletpb.NewTransactionServiceClient(app.WalletGRPC)
 
 	// repository
 	healthCheckRepoImpl := repository.NewHealthCheckRepository(app.Context, app.Config, app.Logger, app.Tracer, app.DB, app.Redis)
-	customerRepoImpl := repository.NewCustomerRepository(app.Context, app.Config, app.Logger, app.Tracer, app.DB, app.Redis)
+	customerRepoImpl := repository.NewCustomerRepository(app.Context, app.Config, app.Logger, app.Tracer, app.DB, app.Redis, app.KafkaProducer)
 
 	// service
 	healthCheckSvcImpl := service.NewHealthCheckService(app.Context, app.Config, app.Tracer, healthCheckRepoImpl)
-	customerSvcImpl := service.NewCustomerService(app.Context, app.Config, app.Tracer, customerRepoImpl, walletServiceClient)
+	customerSvcImpl := service.NewCustomerService(app.Context, app.Config, app.Tracer, customerRepoImpl, walletServiceClient, walletTrxServiceClient)
 
 	// controller
 	healthCheckControllerImpl := controller.NewHealthCheckController(app.Context, app.Config, app.Tracer, healthCheckSvcImpl)

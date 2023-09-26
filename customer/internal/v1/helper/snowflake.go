@@ -15,3 +15,14 @@ func GenerateSnowflakeID() (int64, error) {
 	// Generate a snowflake ID.
 	return node.Generate().Int64(), nil
 }
+
+func GenerateByteSnowflakeID() ([]byte, error) {
+	// Create a new Node with a Node number of 31
+	node, err := snowflake.NewNode(31)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate a snowflake ID in bytes.
+	return node.Generate().Bytes(), nil
+}
