@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS redeem;
+DROP TYPE IF EXISTS redeem_status;

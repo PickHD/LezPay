@@ -5,24 +5,25 @@ E-Wallet using golang.
 ![ARCH](https://raw.github.com/PickHD/LezPay/main/lezpay_arch.png)
 
 ## Main Features : 
-1. **Register & Login, Reset Password Customer & Merchant** _Coming Soon_
-2. **Topup Wallet Customer** (Only Support VA Bank For Now) _Coming Soon_
-3. **Payout Wallet Customer** (Supported Merchant Only) _Coming Soon_
-3. **Dashboard Customer** (Show Current Balances, Show List History Topup/Payout) _Coming Soon_
-4. **Dashboard Merchant** (Show Total Transactions, Show List History Transaction) _Coming Soon_
+- Authentication Customer & Merchant ✅
+- Dashboard Customer & Merchant ✅
+- Topup Wallet Customer
+- Transfer Wallet Customer to Customer
+- Payout Wallet Customer to Merchant app
+- Redeem Profit Merchant
 
-## Tech Used :
+## Tech Stack :
 1. Golang
-2. PostgreSQL
-3. Redis
-4. Kafka
-5. GRPC
-6. Docker
+2. PostgresDB
+3. RedisDB
+4. External Mail Service (Gmail)
+5. Kafka
+6. GRPC
 7. Jaeger Tracer
 
 ## Prerequisites : 
 1. Make sure Docker & Docker Compose already installed on your machine
-2. Rename `example.env` to `.env` on folder `./cmd/v1` every services
+2. Rename `example.env` to `.env` on folder `./cmd` every services
 3. Make sure to uncheck comment & fill your **SMTP configuration** on auth env
 
 ## Setup :
