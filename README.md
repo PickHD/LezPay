@@ -2,7 +2,7 @@
 E-Wallet using golang.
 
 ## Architect Overview :
-![ARCH](https://raw.github.com/PickHD/LezPay/main/lezpay_arch.png)
+
 
 ## Main Features : 
 - Authentication Customer & Merchant ✅
