@@ -1,5 +1,5 @@
 # Load .env configurations
-ifneq (,$(wildcard ./auth/cmd/v1/.env))
+ifneq (,$(wildcard ./auth/cmd/.env))
     export
     MIGRATIONS_SOURCE = file://db/migrations
 	DATABASE_URL = postgres://$(DB_USERNAME):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)
