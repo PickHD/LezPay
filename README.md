@@ -6,11 +6,12 @@ E-Wallet using golang.
 
 ## Main Features : 
 - Authentication Customer & Merchant ✅
-- Dashboard Customer & Merchant ✅
+- Dashboard Customer & Merchant
 - Topup Wallet Customer
 - Transfer Wallet Customer to Customer
 - Payout Wallet Customer to Merchant app
 - Redeem Profit Merchant
+- Dashboard Admin
 
 ## Tech Stack :
 1. Golang
@@ -24,7 +25,6 @@ E-Wallet using golang.
 ## Prerequisites : 
 1. Make sure Docker & Docker Compose already installed on your machine
 2. Rename `example.env` to `.env` on folder `./cmd` every services
-3. Make sure to uncheck comment & fill your **SMTP configuration** on auth env
 
 ## Setup :
 1. To build & run all services in background using command : 
