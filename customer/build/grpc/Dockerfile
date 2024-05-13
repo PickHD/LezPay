@@ -1,8 +1,6 @@
 FROM golang:1.20.3 AS builder
 LABEL maintainer="taufikjanuar35@gmail.com"
 
-RUN go version
-
 WORKDIR /customer
 COPY ./customer/go.mod ./
 COPY ./customer/go.sum ./

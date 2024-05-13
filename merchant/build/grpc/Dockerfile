@@ -1,8 +1,6 @@
 FROM golang:1.20.3 AS builder
 LABEL maintainer="taufikjanuar35@gmail.com"
 
-RUN go version
-
 WORKDIR /merchant
 COPY ./merchant/go.mod ./
 COPY ./merchant/go.sum ./
