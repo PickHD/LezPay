@@ -1,0 +1,15 @@
+basePath: /v1
+host: localhost:8085
+info:
+  contact:
+    email: taufikjanuar35@gmail.com
+    name: Taufik Januar
+  description: LezPay API - Utility Services
+  license:
+    name: MIT
+  title: LezPay API
+  version: "1.0"
+paths: {}
+schemes:
+- http
+swagger: "2.0"
