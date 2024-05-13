@@ -340,6 +340,43 @@ services:
       - redis
       - first-broker
       - second-broker
+  utility-service-http:
+    container_name: utility-service-http
+    build:
+      context: .
+      dockerfile: ./utility/build/http/Dockerfile
+    ports:
+      - '8085:8085'
+    command: utility-service http
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - jaeger
+      - redis
+    links:
+      - jaeger
+      - redis
+  payment-service-consumer:
+    container_name: payment-service-consumer
+    build:
+      context: .
+      dockerfile: ./payment/build/consumer/Dockerfile
+    networks:
+      - lezpay-dev
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
+    links:
+      - postgres
+      - jaeger
+      - redis
+      - first-broker
+      - second-broker
 
 networks:
   lezpay-dev:
