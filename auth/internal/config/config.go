@@ -10,7 +10,6 @@ type (
 		Redis    *Redis
 		Secret   *Secret
 		Tracer   *Tracer
-		Mailer   *Mailer
 		Service  *Service
 	}
 
@@ -47,20 +46,11 @@ type (
 		JaegerURL string
 	}
 
-	Mailer struct {
-		Host     string
-		Port     int
-		Username string
-		Password string
-		Sender   string
-		IsTLS    bool
-		SSL      int
-	}
-
 	Service struct {
 		GRPCCustomerHost string
 		GRPCMerchantHost string
 		GRPCWalletHost   string
+		UtilityURL       string
 	}
 )
 
@@ -93,19 +83,11 @@ func loadConfiguration() *Configuration {
 		Tracer: &Tracer{
 			JaegerURL: helper.GetEnvString("JAEGER_URL"),
 		},
-		Mailer: &Mailer{
-			Host:     helper.GetEnvString("SMTP_HOST"),
-			Port:     helper.GetEnvInt("SMTP_PORT"),
-			Username: helper.GetEnvString("SMTP_USERNAME"),
-			Password: helper.GetEnvString("SMTP_PASSWORD"),
-			Sender:   helper.GetEnvString("SMTP_SENDER"),
-			SSL:      helper.GetEnvInt("SMTP_SSL"),
-			IsTLS:    helper.GetEnvBool("SMTP_IS_TLS"),
-		},
 		Service: &Service{
 			GRPCCustomerHost: helper.GetEnvString("GRPC_CUSTOMER_HOST"),
 			GRPCMerchantHost: helper.GetEnvString("GRPC_MERCHANT_HOST"),
 			GRPCWalletHost:   helper.GetEnvString("GRPC_WALLET_HOST"),
+			UtilityURL:       helper.GetEnvString("UTILITY_URL"),
 		},
 	}
 }

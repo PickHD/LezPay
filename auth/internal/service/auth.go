@@ -81,8 +81,8 @@ func (as *AuthServiceImpl) RegisterCustomerOrMerchant(req *model.RegisterRequest
 
 	switch req.UserType {
 	case model.Customer:
-		// cross check request email with email in merchant table, if exists return error due preventing duplicate email in both tables (customer/merchant)
-		_, err := as.MerchantClients.GetMerchantDetailsByEmail(as.Context, &merchantpb.GetMerchantDetailsByEmailRequest{Email: req.Email})
+		// check request email
+		_, err := as.CustomerClients.GetCustomerDetailsByEmail(as.Context, &customerpb.GetCustomerDetailsByEmailRequest{Email: req.Email})
 		if err != nil {
 			switch status.Code(err) {
 			case codes.NotFound:
@@ -110,10 +110,10 @@ func (as *AuthServiceImpl) RegisterCustomerOrMerchant(req *model.RegisterRequest
 			return err
 		}
 
-		return model.NewError(model.Validation, "Email already exists as Merchant, please login to merchant page")
+		return model.NewError(model.Validation, "Email already exists")
 	case model.Merchant:
-		// cross check request email with email in customer table, if exists return error due preventing duplicate email in both tables (customer/merchant)
-		_, err := as.CustomerClients.GetCustomerDetailsByEmail(as.Context, &customerpb.GetCustomerDetailsByEmailRequest{Email: req.Email})
+		// check request email
+		_, err := as.MerchantClients.GetMerchantDetailsByEmail(as.Context, &merchantpb.GetMerchantDetailsByEmailRequest{Email: req.Email})
 		if err != nil {
 			switch status.Code(err) {
 			case codes.NotFound:
@@ -140,7 +140,7 @@ func (as *AuthServiceImpl) RegisterCustomerOrMerchant(req *model.RegisterRequest
 			return err
 		}
 
-		return model.NewError(model.Validation, "Email already exists as Customer, please login to customer page")
+		return model.NewError(model.Validation, "Email already exists")
 	}
 
 	return model.NewError(model.Validation, "Invalid user type")

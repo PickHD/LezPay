@@ -3,6 +3,7 @@ package application
 import (
 	"github.com/PickHD/LezPay/auth/internal/controller"
 	"github.com/PickHD/LezPay/auth/internal/repository"
+	"github.com/PickHD/LezPay/auth/internal/requester"
 	"github.com/PickHD/LezPay/auth/internal/service"
 
 	customerpb "github.com/PickHD/LezPay/auth/pkg/proto/v1/customer"
@@ -19,10 +20,11 @@ func SetupDependencyInjection(app *App) *Dependency {
 	customerServiceClient := customerpb.NewCustomerServiceClient(app.CustomerGRPC)
 	merchantServiceClient := merchantpb.NewMerchantServiceClient(app.MerchantGRPC)
 	walletServiceClient := walletpb.NewWalletServiceClient(app.WalletGRPC)
+	utilityRequester := requester.NewUtilityRequester(app.Context, app.Config, app.Logger, app.Tracer, app.HTTPClient)
 
 	// repository
 	healthCheckRepoImpl := repository.NewHealthCheckRepository(app.Context, app.Config, app.Logger, app.Tracer, app.DB, app.Redis)
-	authRepoImpl := repository.NewAuthRepository(app.Context, app.Config, app.Logger, app.Redis, app.Tracer, app.Mailer)
+	authRepoImpl := repository.NewAuthRepository(app.Context, app.Config, app.Logger, app.Redis, app.Tracer, utilityRequester)
 
 	// service
 	healthCheckSvcImpl := service.NewHealthCheckService(app.Context, app.Config, app.Tracer, healthCheckRepoImpl)

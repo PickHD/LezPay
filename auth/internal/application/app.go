@@ -2,8 +2,8 @@ package application
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/PickHD/LezPay/auth/internal/config"
@@ -21,7 +21,6 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"gopkg.in/gomail.v2"
 )
 
 // App ..
@@ -33,10 +32,10 @@ type App struct {
 	DB           *pgxpool.Pool
 	Redis        *redis.Client
 	Tracer       *trace.TracerProvider
-	Mailer       *gomail.Dialer
 	CustomerGRPC *grpc.ClientConn
 	MerchantGRPC *grpc.ClientConn
 	WalletGRPC   *grpc.ClientConn
+	HTTPClient   *http.Client
 }
 
 // SetupApplication configuring dependencies app needed
@@ -61,9 +60,6 @@ func SetupApplication(ctx context.Context) (*App, error) {
 	}
 
 	otel.SetTracerProvider(app.Tracer)
-
-	// initialize mailer
-	app.Mailer = initSMTPMailDialer(app.Config)
 
 	// "postgres://username:password@localhost:5432/database_name"
 	dbpool, err := pgxpool.Connect(context.Background(), fmt.Sprintf("postgres://%s:%s@%s:%d/%s", app.Config.Database.Username, app.Config.Database.Password, app.Config.Database.Host, app.Config.Database.Port, app.Config.Database.Name))
@@ -102,6 +98,8 @@ func SetupApplication(ctx context.Context) (*App, error) {
 		app.Logger.Error("failed Dial WalletGRPC, error :", err)
 		return app, err
 	}
+
+	app.HTTPClient = &http.Client{}
 
 	app.Application = gin.New()
 	app.Application.Use(middleware.CORSMiddleware())
@@ -155,12 +153,4 @@ func initJaegerTracerProvider(cfg *config.Configuration) (*trace.TracerProvider,
 		)),
 	)
 	return tp, nil
-}
-
-// initSMTPMailDialer returns an Dialer configured to use
-func initSMTPMailDialer(cfg *config.Configuration) *gomail.Dialer {
-	d := gomail.NewDialer(cfg.Mailer.Host, cfg.Mailer.Port, cfg.Mailer.Username, cfg.Mailer.Password)
-	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-
-	return d
 }
