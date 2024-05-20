@@ -136,10 +136,12 @@ services:
       - postgres
       - jaeger
       - redis
+      - utility-service-http
     links:
       - postgres
       - jaeger
       - redis
+      - utility-service-http
   customer-service-http:
     container_name: customer-service-http
     build:
@@ -345,8 +347,6 @@ services:
     build:
       context: .
       dockerfile: ./utility/build/http/Dockerfile
-    ports:
-      - '8085:8085'
     command: utility-service http
     networks:
       - lezpay-dev
